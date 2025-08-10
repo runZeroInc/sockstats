@@ -24,6 +24,6 @@ _testmain.go
 *.prof
 junk
 .idea
-cmd/delta
+cmd/delta/delta
 cmd/exporter_example1/exporter_example1
 cmd/exporter_example2/exporter_example2

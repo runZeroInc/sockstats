@@ -1,5 +1,7 @@
 /**
- * Copyright (c) 2022, Xerra Earth Observation Institute
+ * Copyright (c) 2022, Xerra Earth Observation Institute.
+ * Copyright (c) 2025, Simeon Miteff.
+ *
  * See LICENSE.TXT in the root directory of this source tree.
  */
 
@@ -14,7 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/xid"
-	"gitlab.com/xerra/common/go-tcpinfo/pkg/exporter"
+	"github.com/simeonmiteff/go-tcpinfo/pkg/exporter"
 )
 
 func main() {
@@ -50,7 +52,7 @@ func main() {
 		},
 	)
 
-	prometheus.MustRegister(&collector)
+	prometheus.MustRegister(collector)
 
 	server := http.Server{
 		Addr: ":18080",

@@ -1,4 +1,4 @@
-module gitlab.com/xerra/common/go-tcpinfo
+module github.com/simeonmiteff/go-tcpinfo
 
 go 1.25
 

@@ -1,5 +1,6 @@
 /**
- * Copyright (c) 2022, Xerra Earth Observation Institute
+ * Copyright (c) 2022, Xerra Earth Observation Institute.
+ * Copyright (c) 2025, Simeon Miteff.
  *
  * Portions are derived from of Linux's tcp.h, used under the syscall exception
  * (see https://spdx.org/licenses/Linux-syscall-note.html).
@@ -88,14 +89,48 @@ struct tcp_info {
 	uint32_t	tcpi_snd_wnd;	     /* peer's advertised receive window after
 				      * scaling (bytes)
 				      */
+	uint32_t	tcpi_rcv_wnd;	     /* local advertised receive window after
+				      * scaling (bytes)
+				      */
+
+	uint32_t   tcpi_rehash;         /* PLB or timeout triggered rehash attempts */
+
+	uint16_t	tcpi_total_rto;	/* Total number of RTO timeouts, including
+				 * SYN/SYN-ACK and recurring timeouts.
+				 */
+	uint16_t	tcpi_total_rto_recoveries;	/* Total number of RTO
+						 * recoveries, including any
+						 * unfinished recovery.
+						 */
+	uint32_t	tcpi_total_rto_time;	/* Total time spent in RTO recoveries
+					 * in milliseconds, including any
+					 * unfinished recovery.
+					 */
 };
 
-void set_fields(
+void zero(
+    void* ptr
+    );
+
+void set_snd_wscale(
     void* ptr,
-    uint8_t snd_wscale,
-    uint8_t rcv_wscale,
-    bool delivery_rate_app_limited,
+    uint8_t snd_wscale
+    );
+
+void set_rcv_wscale(
+    void* ptr,
+    uint8_t rcv_wscale
+    );
+
+void set_delivery_rate_app_limited(
+    void* ptr,
+    bool delivery_rate_app_limited
+    );
+
+void set_fastopen_client_fail(
+    void* ptr,
     uint8_t fastopen_client_fail
     );
+
 
 #endif /* _MOCK_TCPINFO_H_ */

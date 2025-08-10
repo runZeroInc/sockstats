@@ -1,5 +1,7 @@
 /**
- * Copyright (c) 2022, Xerra Earth Observation Institute
+ * Copyright (c) 2022, Xerra Earth Observation Institute.
+ * Copyright (c) 2025, Simeon Miteff.
+ *
  * See LICENSE.TXT in the root directory of this source tree.
  */
 
@@ -16,13 +18,32 @@ import (
 func (packed *RawTCPInfo) MockSetFields(
 	SndWScale uint8,
 	RcvWScale uint8,
-	DeliveryRateAppLimited bool,
-	FastOpenClientFail uint8,
+	DeliveryRateAppLimited NullableBool,
+	FastOpenClientFail NullableUint8,
 ) {
-	C.set_fields(unsafe.Pointer(packed),
+	C.zero(unsafe.Pointer(packed))
+
+	C.set_snd_wscale(
+		unsafe.Pointer(packed),
 		C.uchar(SndWScale),
-		C.uchar(RcvWScale),
-		C.bool(DeliveryRateAppLimited),
-		C.uchar(FastOpenClientFail),
 	)
+
+	C.set_rcv_wscale(
+		unsafe.Pointer(packed),
+		C.uchar(RcvWScale),
+	)
+
+	if DeliveryRateAppLimited.Valid {
+		C.set_delivery_rate_app_limited(
+			unsafe.Pointer(packed),
+			C.bool(DeliveryRateAppLimited.Value),
+		)
+	}
+
+	if FastOpenClientFail.Valid {
+		C.set_fastopen_client_fail(
+			unsafe.Pointer(packed),
+			C.uchar(FastOpenClientFail.Value),
+		)
+	}
 }
