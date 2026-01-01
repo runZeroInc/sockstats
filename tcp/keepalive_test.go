@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mikioh/tcp"
-	"github.com/mikioh/tcpopt"
+	"github.com/runZeroInc/sockstats/tcp"
+	"github.com/runZeroInc/sockstats/tcpopt"
 )
 
 func TestKeepAliveOptions(t *testing.T) {

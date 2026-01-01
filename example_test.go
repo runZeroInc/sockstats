@@ -10,8 +10,8 @@ import (
 	"log"
 	"net"
 
-	"github.com/mikioh/tcp"
-	"github.com/mikioh/tcpinfo"
+	"github.com/runZeroInc/sockstats/tcp"
+	"github.com/simeonmiteff/go-tcpinfo"
 )
 
 func ExampleInfo() {

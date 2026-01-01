@@ -4,7 +4,7 @@
 
 package tcpinfo
 
-import "github.com/mikioh/tcpopt"
+import "github.com/runZeroInc/sockstats/tcpopt"
 
 func init() {
 	for _, o := range options {

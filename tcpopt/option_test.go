@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mikioh/tcpopt"
+	"github.com/runZeroInc/sockstats/tcpopt"
 )
 
 func TestMarshalAndParse(t *testing.T) {

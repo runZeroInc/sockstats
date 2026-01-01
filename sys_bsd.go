@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build freebsd || netbsd
 // +build freebsd netbsd
 
 package tcpinfo
@@ -12,7 +13,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/mikioh/tcpopt"
+	"github.com/runZeroInc/sockstats/tcpopt"
 )
 
 var options = [soMax]option{

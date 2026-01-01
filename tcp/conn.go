@@ -8,7 +8,7 @@ import (
 	"net"
 	"syscall"
 
-	"github.com/mikioh/tcpopt"
+	"github.com/runZeroInc/sockstats/tcpopt"
 )
 
 var _ net.Conn = &Conn{}

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build !darwin && !freebsd && !linux && !netbsd
 // +build !darwin,!freebsd,!linux,!netbsd
 
 package tcpinfo
@@ -9,7 +10,7 @@ package tcpinfo
 import (
 	"errors"
 
-	"github.com/mikioh/tcpopt"
+	"github.com/runZeroInc/sockstats/tcpopt"
 )
 
 var options [soMax]option

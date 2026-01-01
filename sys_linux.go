@@ -10,7 +10,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/mikioh/tcpopt"
+	"github.com/runZeroInc/sockstats/tcpopt"
 )
 
 var options = [soMax]option{

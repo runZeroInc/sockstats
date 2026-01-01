@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/mikioh/tcpopt"
+	"github.com/runZeroInc/sockstats/tcpopt"
 )
 
 // A Conn represents an end point that uses TCP connection.
