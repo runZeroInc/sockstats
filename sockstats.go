@@ -110,7 +110,7 @@ func (w *Conn) SetConnectionAttempts(attempts int) {
 // Close invokes the reportWrapper with a close event before closing the connection.
 func (w *Conn) Close() error {
 	w.ClosedAt = time.Now().UnixNano()
-	w.reportStats(w, Closed)
+	w.gatherAndReport(Closed)
 	return w.Conn.Close()
 }
 
