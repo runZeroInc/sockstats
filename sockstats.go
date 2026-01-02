@@ -4,7 +4,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/runZeroInc/sockstats/simeonmiteff/tcpinfo"
+	"github.com/runZeroInc/sockstats/pkg/tcpinfo"
 )
 
 const (
