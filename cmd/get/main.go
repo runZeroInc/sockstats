@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -106,6 +108,14 @@ func controlSocket(ctx context.Context, network, address string, conn syscall.Ra
 }
 
 func reportStats(tic *sockstats.Conn, state int) {
-	logrus.Infof("%s: openedAt=%d closedAt=%d sentBytes=%d recvBytes=%d attempts=%d recvErr=%v sentErr=%v requestLatency=%d open=%#v closed=%#v",
-		sockstats.StateMap[state], tic.OpenedAt, tic.ClosedAt, tic.SentBytes, tic.RecvBytes, tic.Attempts, tic.RecvErr, tic.SentErr, tic.FirstReadAt-tic.FirstWriteAt, tic.OpenedInfo, tic.ClosedInfo)
+	r, err := json.MarshalIndent(tic, "", "  ")
+	if err != nil {
+		logrus.Errorf("marshal tcpinfo: %v", err)
+		return
+	}
+	fmt.Printf("%s\n========%s\n", sockstats.StateMap[state], string(r))
+	/*
+		logrus.Infof("%s: openedAt=%d closedAt=%d sentBytes=%d recvBytes=%d attempts=%d recvErr=%v sentErr=%v requestLatency=%d open=%#v closed=%#v",
+			sockstats.StateMap[state], tic.OpenedAt, tic.ClosedAt, tic.SentBytes, tic.RecvBytes, tic.Attempts, tic.RecvErr, tic.SentErr, tic.FirstReadAt-tic.FirstWriteAt, tic.OpenedInfo, tic.ClosedInfo)
+	*/
 }

@@ -20,20 +20,20 @@ var StateMap = map[int]string{
 type ReportStatsFn func(tic *Conn, state int)
 
 type Conn struct {
-	net.Conn
-	reportStats     func(*Conn, int)
-	OpenedAt        int64
-	ClosedAt        int64
-	FirstReadAt     int64
-	FirstWriteAt    int64
-	SentBytes       int64
-	RecvBytes       int64
-	RecvErr         error
-	SentErr         error
-	InfoErr         error
-	Attempts        int
-	OpenedInfo      *tcpinfo.Info
-	ClosedInfo      *tcpinfo.Info
+	net.Conn        `json:"-"`
+	reportStats     func(*Conn, int) `json:"-"`
+	OpenedAt        int64            `json:"openedAt,omitempty"`
+	ClosedAt        int64            `json:"closedAt,omitempty"`
+	FirstReadAt     int64            `json:"firstReadAt,omitempty"`
+	FirstWriteAt    int64            `json:"firstWriteAt,omitempty"`
+	SentBytes       int64            `json:"sentBytes,omitempty"`
+	RecvBytes       int64            `json:"recvBytes,omitempty"`
+	RecvErr         error            `json:"recvErr,omitempty"`
+	SentErr         error            `json:"sentErr,omitempty"`
+	InfoErr         error            `json:"infoErr,omitempty"`
+	Attempts        int              `json:"attempts,omitempty"`
+	OpenedInfo      *tcpinfo.Info    `json:"openedInfo,omitempty"`
+	ClosedInfo      *tcpinfo.Info    `json:"closedInfo,omitempty"`
 	supportsTCPInfo bool
 }
 

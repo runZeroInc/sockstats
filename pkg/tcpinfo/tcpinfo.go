@@ -1,30 +1,30 @@
 package tcpinfo
 
 import (
-	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 )
 
 type Info struct {
-	State               string        `json:"state"`                 // Connection state
-	Options             []Option      `json:"options,omitempty"`     // Requesting options
-	PeerOptions         []Option      `json:"peerOptions,omitempty"` // Options requested from peer
-	SenderMSS           uint64        `json:"sendMSS"`               // Maximum segment size for sender in bytes
-	ReceiverMSS         uint64        `json:"recvMSS"`               // Maximum segment size for receiver in bytes
-	RTT                 time.Duration `json:"rtt"`                   // Round-trip time
-	RTTVar              time.Duration `json:"rttVar"`                // Round-trip time variation
-	RTO                 time.Duration `json:"rto"`                   // Retransmission timeout
-	ATO                 time.Duration `json:"ato"`                   // Delayed acknowledgement timeout [Linux only]
-	LastDataSent        time.Duration `json:"lastDataSent"`          // Since last data sent [Linux only]
-	LastDataReceived    time.Duration `json:"lastDataReceived"`      // Since last data received [FreeBSD and Linux]
-	LastAckReceived     time.Duration `json:"lastAckReceived"`       // Since last ack received [Linux only]
-	ReceiverWindow      uint64        `json:"recvWindow"`            // advertised receiver window in bytes
-	SenderSSThreshold   uint64        `json:"sendSSThreshold"`       // slow start threshold for sender in bytes or # of segments
-	ReceiverSSThreshold uint64        `json:"recvSSThreshold"`       // slow start threshold for receiver in bytes [Linux only]
-	SenderWindowBytes   uint64        `json:"sendCWindowdBytes"`     // congestion window for sender in bytes [Darwin and FreeBSD]
-	SenderWindowSegs    uint64        `json:"sendCWindowSegs"`       // congestion window for sender in # of segments [Linux and NetBSD]
-	Sys                 *SysInfo      `json:"sys,omitempty"`         // Platform-specific information
+	State               string        `json:"state,omitempty"`             // Connection state
+	Options             []Option      `json:"options,omitempty"`           // Requesting options
+	PeerOptions         []Option      `json:"peerOptions,omitempty"`       // Options requested from peer
+	SenderMSS           uint64        `json:"sendMSS,omitempty"`           // Maximum segment size for sender in bytes
+	ReceiverMSS         uint64        `json:"recvMSS,omitempty"`           // Maximum segment size for receiver in bytes
+	RTT                 time.Duration `json:"rtt,omitempty"`               // Round-trip time
+	RTTVar              time.Duration `json:"rttVar,omitempty"`            // Round-trip time variation
+	RTO                 time.Duration `json:"rto,omitempty"`               // Retransmission timeout
+	ATO                 time.Duration `json:"ato,omitempty"`               // Delayed acknowledgement timeout [Linux only]
+	LastDataSent        time.Duration `json:"lastDataSent,omitempty"`      // Since last data sent [Linux only]
+	LastDataReceived    time.Duration `json:"lastDataReceived,omitempty"`  // Since last data received [FreeBSD and Linux]
+	LastAckReceived     time.Duration `json:"lastAckReceived,omitempty"`   // Since last ack received [Linux only]
+	ReceiverWindow      uint64        `json:"recvWindow,omitempty"`        // advertised receiver window in bytes
+	SenderSSThreshold   uint64        `json:"sendSSThreshold,omitempty"`   // slow start threshold for sender in bytes or # of segments
+	ReceiverSSThreshold uint64        `json:"recvSSThreshold,omitempty"`   // slow start threshold for receiver in bytes [Linux only]
+	SenderWindowBytes   uint64        `json:"sendCWindowdBytes,omitempty"` // congestion window for sender in bytes [Darwin and FreeBSD]
+	SenderWindowSegs    uint64        `json:"sendCWindowSegs,omitempty"`   // congestion window for sender in # of segments [Linux and NetBSD]
+	Sys                 *SysInfo      `json:"sysInfo,omitempty"`           // Platform-specific information
 }
 
 type Option struct {
@@ -39,6 +39,11 @@ func (o *Option) String() string {
 	return fmt.Sprintf("%s:%.2x", o.Kind, o.Value)
 }
 
+func (o *Option) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.Quote(o.String())), nil
+}
+
+/*
 // MarshalJSON implements the MarshalJSON method of json.Marshaler
 // interface.
 func (i *Info) MarshalJSON() ([]byte, error) {
@@ -77,3 +82,4 @@ func (i *Info) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(&raw)
 }
+*/
