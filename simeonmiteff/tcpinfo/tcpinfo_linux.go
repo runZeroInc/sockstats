@@ -1,30 +1,23 @@
 //go:build linux
 // +build linux
 
-/**
- * Copyright (c) 2022, Xerra Earth Observation Institute.
- * Copyright (c) 2025, Simeon Miteff.
- *
- * Portions are derived from of Linux's tcp.h, used under the syscall exception
- * (see https://spdx.org/licenses/Linux-syscall-note.html).
- *
- * See LICENSE.TXT in the root directory of this source tree.
- */
-
 package tcpinfo
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"syscall"
+	"time"
 	"unsafe"
 )
 
-// RawTCPInfo has identical memory layout to Linux kernel tcp_info struct (current as of kernel 5.17.0).
+// RawInfo has identical memory layout to Linux kernel tcp_info struct (current as of kernel 5.17.0).
 // bitfield0 and bitfield1 have been added to capture the 4 packed fields. Note that bitfield1 would still
 // have had the same location before tcpi_delivery_rate_app_limited and tcpi_fastopen_client_fail were added
 // (in v4.9.0 and v5.5.0 respectively) because of alignment rules, so they didn't increase the length or
 // shift the offsets of subsequent variables.
-type RawTCPInfo struct { // struct tcp_info {          																	                                             // unless noted below, struct fields have been around since at least (1da177e4c3f41524e886b7f1b8a0c1fc7321cac2) v2.6.12-rc2^0
+type RawInfo struct { // struct tcp_info {          																	                                             // unless noted below, struct fields have been around since at least (1da177e4c3f41524e886b7f1b8a0c1fc7321cac2) v2.6.12-rc2^0
 	state                uint8  // 1   __U8	tcpi_state;
 	ca_state             uint8  // 2   __u8	tcpi_ca_state;
 	retransmits          uint8  // 3   __u8	tcpi_retransmits;
@@ -111,83 +104,91 @@ type NullableUint64 struct {
 	Value uint64
 }
 
-// TCPInfo is a gopher-style unpacked representation of RawTCPInfo.
-type TCPInfo struct {
-	State                  uint8          `tcpi:"name=state,prom_type=gauge,prom_help='Connection state, see include/net/tcp_states.h.'"`
-	CAState                uint8          `tcpi:"name=ca_state,prom_type=gauge,prom_help='Loss recovery state machine, see include/net/tcp.h.'"`
-	Retransmits            uint8          `tcpi:"name=retransmits,prom_type=gauge,prom_help='Number of timeouts (RTO based retransmissions) at this sequence (reset to zero on forward progress).'"`
-	Probes                 uint8          `tcpi:"name=probes,prom_type=gauge,prom_help='Consecutive zero window probes that have gone unanswered.'"`
-	Backoff                uint8          `tcpi:"name=backoff,prom_type=gauge,prom_help='Exponential timeout backoff counter. Increment on RTO, reset on successful RTT measurements.'"`
-	Options                uint8          `tcpi:"name=options,prom_type=gauge,prom_help='Bit encoded SYN options and other negotiations: TIMESTAMPS 0x1; SACK 0x2; WSCALE 0x4; ECN 0x8 - Was negotiated; ECN_SEEN - At least one ECT seen; SYN_DATA - SYN-ACK acknowledged data in SYN sent or rcvd.'"`
-	SndWScale              uint8          `tcpi:"name=snd_wscale,prom_type=gauge,prom_help='Window scaling of send-half of connection (bit shift).'"`
-	RcvWScale              uint8          `tcpi:"name=rcv_wscale,prom_type=gauge,prom_help='Window scaling of receive-half of connection (bit shift).'"`
-	DeliveryRateAppLimited NullableBool   `tcpi:"name=delivery_rate_app_limited,prom_type=gauge,prom_help='Flag indicating that rate measurements reflect non-network bottlenecks (1.0 = true, 0.0 = false).'"`
-	FastOpenClientFail     NullableUint8  `tcpi:"name=fastopen_client_fail,prom_type=gauge,prom_help='The reason why TCP fastopen failed. 0x0: unspecified; 0x1: no cookie sent; 0x2: SYN-ACK did not ack SYN data; 0x3: SYN-ACK did not ack SYN data after timeout (-1.0 if unavailable).'"`
-	RTO                    uint32         `tcpi:"name=rto,prom_type=gauge,prom_help='Retransmission Timeout. Quantized to system jiffies.'"`
-	ATO                    uint32         `tcpi:"name=ato,prom_type=gauge,prom_help='Delayed ACK Timeout. Quantized to system jiffies.'"`
-	SndMSS                 uint32         `tcpi:"name=snd_mss,prom_type=gauge,prom_help='Current Maximum Segment Size. Note that this can be smaller than the negotiated MSS for various reasons.'"`
-	RcvMSS                 uint32         `tcpi:"name=rcv_mss,prom_type=gauge,prom_help='Maximum observed segment size from the remote host. Used to trigger delayed ACKs.'"`
-	UnAcked                uint32         `tcpi:"name=unacked,prom_type=gauge,prom_help='Number of segments between snd.nxt and snd.una. Accounting for the Pipe algorithm.'"`
-	Sacked                 uint32         `tcpi:"name=sacked,prom_type=gauge,prom_help='Scoreboard segment marked SACKED by sack blocks. Accounting for the Pipe algorithm.'"`
-	Lost                   uint32         `tcpi:"name=lost,prom_type=gauge,prom_help='Scoreboard segments marked lost by loss detection heuristics. Accounting for the Pipe algorithm.'"`
-	Retrans                uint32         `tcpi:"name=retrans,prom_type=gauge,prom_help='Scoreboard segments marked retransmitted. Accounting for the Pipe algorithm.'"`
-	Fackets                uint32         `tcpi:"name=fackets,prom_type=counter,prom_help='Some counter in Forward Acknowledgment (FACK) TCP congestion control. M-Lab says this is unused?.'"`
-	LastDataSent           uint32         `tcpi:"name=last_data_sent,prom_type=gauge,prom_help='Time since last data segment was sent. Quantized to jiffies.'"`
-	LastAckSent            uint32         `tcpi:"name=last_ack_sent,prom_type=gauge,prom_help='Time since last ACK was sent. Not implemented!.'"`
-	LastDataRecv           uint32         `tcpi:"name=last_data_recv,prom_type=gauge,prom_help='Time since last data segment was received. Quantized to jiffies.'"`
-	LastAckRecv            uint32         `tcpi:"name=last_ack_recv,prom_type=gauge,prom_help='Time since last ACK was received. Quantized to jiffies.'"`
-	PMTU                   uint32         `tcpi:"name=pmtu,prom_type=gauge,prom_help='Maximum IP Transmission Unit for this path.'"`
-	RcvSSThresh            uint32         `tcpi:"name=rcv_ssthresh,prom_type=gauge,prom_help='Current Window Clamp. Receiver algorithm to avoid allocating excessive receive buffers.'"`
-	RTT                    uint32         `tcpi:"name=rtt,prom_type=gauge,prom_help='Smoothed Round Trip Time (RTT). The Linux implementation differs from the standard.'"`
-	RTTVar                 uint32         `tcpi:"name=rttvar,prom_type=gauge,prom_help='RTT variance. The Linux implementation differs from the standard.'"`
-	SndSSThresh            uint32         `tcpi:"name=snd_ssthresh,prom_type=gauge,prom_help='Slow Start Threshold. Value controlled by the selected congestion control algorithm.'"`
-	SndCWnd                uint32         `tcpi:"name=snd_cwnd,prom_type=gauge,prom_help='Congestion Window. Value controlled by the selected congestion control algorithm.'"`
-	AdvMSS                 uint32         `tcpi:"name=advmss,prom_type=gauge,prom_help='Advertised maximum segment size.'"`
-	Reordering             uint32         `tcpi:"name=reordering,prom_type=gauge,prom_help='Maximum observed reordering distance.'"`
-	RcvRTT                 uint32         `tcpi:"name=rcv_rtt,prom_type=gauge,prom_help='Receiver Side RTT estimate.'"`
-	RcvSpace               uint32         `tcpi:"name=rcv_space,prom_type=gauge,prom_help='Space reserved for the receive queue. Typically updated by receiver side auto-tuning.'"`
-	TotalRetrans           uint32         `tcpi:"name=total_retrans,prom_type=gauge,prom_help='Total number of segments containing retransmitted data.'"`
-	PacingRate             NullableUint64 `tcpi:"name=pacing_rate,prom_type=gauge,prom_help='Current Pacing Rate, nominally updated by congestion control.'"`
-	MaxPacingRate          NullableUint64 `tcpi:"name=max_pacing_rate,prom_type=gauge,prom_help='Settable pacing rate clamp. Set with setsockopt( ..SO_MAX_PACING_RATE.. ).'"`
-	BytesAcked             NullableUint64 `tcpi:"name=bytes_acked,prom_type=gauge,prom_help='The number of data bytes for which cumulative acknowledgments have been received | RFC4898 tcpEStatsAppHCThruOctetsAcked.'"`
-	BytesReceived          NullableUint64 `tcpi:"name=bytes_received,prom_type=counter,prom_help='The number of data bytes for which cumulative acknowledgments have been sent | RFC4898 tcpEStatsAppHCThruOctetsReceived.'"`
-	SegsOut                NullableUint32 `tcpi:"name=segs_out,prom_type=gauge,prom_help='The number of segments transmitted. Includes data and pure ACKs | RFC4898 tcpEStatsPerfSegsOut.'"`
-	SegsIn                 NullableUint32 `tcpi:"name=segs_in,prom_type=gauge,prom_help='The number of segments received. Includes data and pure ACKs | RFC4898 tcpEStatsPerfSegsIn.'"`
-	NotsentBytes           NullableUint32 `tcpi:"name=notsent_bytes,prom_type=gauge,prom_help='Number of bytes queued in the send buffer that have not been sent.'"`
-	MinRTT                 NullableUint32 `tcpi:"name=min_rtt,prom_type=gauge,prom_help='Minimum RTT. From an older, pre-BBR algorithm.'"`
-	DataSegsIn             NullableUint32 `tcpi:"name=data_segs_in,prom_type=gauge,prom_help='Input segments carrying data (len>0) | RFC4898 tcpEStatsDataSegsIn (actually tcpEStatsPerfDataSegsIn).'"`
-	DataSegsOut            NullableUint32 `tcpi:"name=data_segs_out,prom_type=gauge,prom_help='Transmitted segments carrying data (len>0) | RFC4898 tcpEStatsDataSegsOut (actually tcpEStatsPerfDataSegsOut).'"`
-	DeliveryRate           NullableUint64 `tcpi:"name=delivery_rate,prom_type=gauge,prom_help='Observed Maximum Delivery Rate.'"`
-	BusyTime               NullableUint64 `tcpi:"name=busy_time,prom_type=gauge,prom_help='Time in usecs with outstanding (unacknowledged) data. Time when snd.una not equal to snd.next.'"`
-	RwndLimited            NullableUint64 `tcpi:"name=rwnd_limited,prom_type=gauge,prom_help='Time in usecs spent limited by/waiting for receiver window.'"`
-	SndbufLimited          NullableUint64 `tcpi:"name=sndbuf_limited,prom_type=gauge,prom_help='Time in usecs spent limited by/waiting for sender buffer space. This only includes the time when TCP transmissions are starved for data, but the application has been stopped because the buffer is full and can not be grown for some reason.'"`
-	Delivered              NullableUint32 `tcpi:"name=delivered,prom_type=gauge,prom_help='Data segments delivered to the receiver including retransmits. As reported by returning ACKs, used by ECN.'"`
-	DeliveredCE            NullableUint32 `tcpi:"name=delivered_ce,prom_type=gauge,prom_help='ECE marked data segments delivered to the receiver including retransmits. As reported by returning ACKs, used by ECN.'"`
-	BytesSent              NullableUint64 `tcpi:"name=bytes_sent,prom_type=gauge,prom_help='Payload bytes sent (excludes headers, includes retransmissions) | RFC4898 tcpEStatsPerfHCDataOctetsOut.'"`
-	BytesRetrans           NullableUint64 `tcpi:"name=bytes_retrans,prom_type=gauge,prom_help='Bytes retransmitted. May include headers and new data carried with a retransmission (for thin flows) | RFC4898 tcpEStatsPerfOctetsRetrans.'"`
-	DSACKDups              NullableUint32 `tcpi:"name=dsack_dups,prom_type=gauge,prom_help='Duplicate segments reported by DSACK | RFC4898 tcpEStatsStackDSACKDups.'"`
-	ReordSeen              NullableUint32 `tcpi:"name=reord_seen,prom_type=counter,prom_help='Received ACKs that were out of order. Estimates reordering on the return path.'"`
-	RcvOOOPack             NullableUint32 `tcpi:"name=rcv_ooopack,prom_type=counter,prom_help='Out-of-order packets received.'"`
-	SndWnd                 NullableUint32 `tcpi:"name=snd_wnd,prom_type=gauge,prom_help='Peers advertised receive window after scaling (bytes).'"`
-	RcvWnd                 NullableUint32 `tcpi:"name=rcv_wnd,prom_type=gauge,prom_help='local advertised receive window after scaling (bytes).'"`
-	Rehash                 NullableUint32 `tcpi:"name=rehash,prom_type=gauge,prom_help='PLB or timeout triggered rehash attempts.'"`
-	TotalRTO               NullableUint16 `tcpi:"name=total_rto,prom_type=counter,prom_help='Total number of RTO timeouts, including SYN/SYN-ACK and recurring timeouts.'"`
-	TotalRTORecoveries     NullableUint16 `tcpi:"name=total_rto_recoveries,prom_type=counter,prom_help='Total number of RTO recoveries, including any unfinished recovery.'"`
-	TotalRTOTime           NullableUint32 `tcpi:"name=total_rto_time,prom_type=counter,prom_help='Total time spent in RTO recoveries in milliseconds, including any unfinished recovery.'"`
+type NullableDuration struct {
+	Valid bool
+	Value time.Duration
+}
+
+// SysInfo is a gopher-style unpacked representation of RawTCPInfo.
+type SysInfo struct {
+	State                  uint8            `tcpi:"name=state,prom_type=gauge,prom_help='Connection state, see include/net/tcp_states.h.'" json:"state,omitempty"`
+	StateName              string           `tcpi:"name=state_name,prom_type=gauge,prom_help='Connection state name, see include/net/tcp_states.h.'" json:"state_name,omitempty"`
+	CAState                uint8            `tcpi:"name=ca_state,prom_type=gauge,prom_help='Loss recovery state machine, see include/net/tcp.h.'" json:"ca_state,omitempty"`
+	Retransmits            uint8            `tcpi:"name=retransmits,prom_type=gauge,prom_help='Number of timeouts (RTO based retransmissions) at this sequence (reset to zero on forward progress).'" json:"retransmits,omitempty"`
+	Probes                 uint8            `tcpi:"name=probes,prom_type=gauge,prom_help='Consecutive zero window probes that have gone unanswered.'" json:"probes,omitempty"`
+	Backoff                uint8            `tcpi:"name=backoff,prom_type=gauge,prom_help='Exponential timeout backoff counter. Increment on RTO, reset on successful RTT measurements.'" json:"backoff,omitempty"`
+	Options                []Option         `tcpi:"name=options,prom_type=gauge,prom_help='Bit encoded SYN options and other negotiations: TIMESTAMPS 0x1; SACK 0x2; WSCALE 0x4; ECN 0x8 - Was negotiated; ECN_SEEN - At least one ECT seen; SYN_DATA - SYN-ACK acknowledged data in SYN sent or rcvd.'" json:"options,omitempty"`
+	PeerOptions            []Option         `tcpi:"name=peer_options,prom_type=gauge,prom_help='Bit encoded SYN options and other negotiations: TIMESTAMPS 0x1; SACK 0x2; WSCALE 0x4; ECN 0x8 - Was negotiated; ECN_SEEN - At least one ECT seen; SYN_DATA - SYN-ACK acknowledged data in SYN sent or rcvd.'" json:"peer_options,omitempty"`
+	SndWScale              uint8            `tcpi:"name=snd_wscale,prom_type=gauge,prom_help='Window scaling of send-half of connection (bit shift).'" json:"snd_wscale,omitempty"`
+	RcvWScale              uint8            `tcpi:"name=rcv_wscale,prom_type=gauge,prom_help='Window scaling of receive-half of connection (bit shift).'" json:"rcv_wscale,omitempty"`
+	DeliveryRateAppLimited NullableBool     `tcpi:"name=delivery_rate_app_limited,prom_type=gauge,prom_help='Flag indicating that rate measurements reflect non-network bottlenecks (1.0 = true, 0.0 = false).'" json:"delivery_rate_app_limited,omitempty"`
+	FastOpenClientFail     NullableUint8    `tcpi:"name=fastopen_client_fail,prom_type=gauge,prom_help='The reason why TCP fastopen failed. 0x0: unspecified; 0x1: no cookie sent; 0x2: SYN-ACK did not ack SYN data; 0x3: SYN-ACK did not ack SYN data after timeout (-1.0 if unavailable).'" json:"fastopen_client_fail,omitempty"`
+	RTO                    time.Duration    `tcpi:"name=rto,prom_type=gauge,prom_help='Retransmission Timeout. Quantized to system jiffies.'" json:"rto,omitempty"`
+	ATO                    time.Duration    `tcpi:"name=ato,prom_type=gauge,prom_help='Delayed ACK Timeout. Quantized to system jiffies.'" json:"ato,omitempty"`
+	SndMSS                 uint32           `tcpi:"name=snd_mss,prom_type=gauge,prom_help='Current Maximum Segment Size. Note that this can be smaller than the negotiated MSS for various reasons.'" json:"snd_mss,omitempty"`
+	RcvMSS                 uint32           `tcpi:"name=rcv_mss,prom_type=gauge,prom_help='Maximum observed segment size from the remote host. Used to trigger delayed ACKs.'" json:"rcv_mss,omitempty"`
+	UnAcked                uint32           `tcpi:"name=unacked,prom_type=gauge,prom_help='Number of segments between snd.nxt and snd.una. Accounting for the Pipe algorithm.'" json:"unacked,omitempty"`
+	Sacked                 uint32           `tcpi:"name=sacked,prom_type=gauge,prom_help='Scoreboard segment marked SACKED by sack blocks. Accounting for the Pipe algorithm.'" json:"sacked,omitempty"`
+	Lost                   uint32           `tcpi:"name=lost,prom_type=gauge,prom_help='Scoreboard segments marked lost by loss detection heuristics. Accounting for the Pipe algorithm.'" json:"lost,omitempty"`
+	Retrans                uint32           `tcpi:"name=retrans,prom_type=gauge,prom_help='Scoreboard segments marked retransmitted. Accounting for the Pipe algorithm.'" json:"retrans,omitempty"`
+	Fackets                uint32           `tcpi:"name=fackets,prom_type=counter,prom_help='Some counter in Forward Acknowledgment (FACK) TCP congestion control. M-Lab says this is unused?.'" json:"fackets,omitempty"`
+	LastDataSent           time.Duration    `tcpi:"name=last_data_sent,prom_type=gauge,prom_help='Time since last data segment was sent. Quantized to jiffies.'" json:"last_data_sent,omitempty"`
+	LastAckSent            time.Duration    `tcpi:"name=last_ack_sent,prom_type=gauge,prom_help='Time since last ACK was sent. Not implemented!.'" json:"last_ack_sent,omitempty"`
+	LastDataRecv           time.Duration    `tcpi:"name=last_data_recv,prom_type=gauge,prom_help='Time since last data segment was received. Quantized to jiffies.'" json:"last_data_recv,omitempty"`
+	LastAckRecv            time.Duration    `tcpi:"name=last_ack_recv,prom_type=gauge,prom_help='Time since last ACK was received. Quantized to jiffies.'" json:"last_ack_recv,omitempty"`
+	PMTU                   uint32           `tcpi:"name=pmtu,prom_type=gauge,prom_help='Maximum IP Transmission Unit for this path.'" json:"pmtu,omitempty"`
+	RcvSSThresh            uint32           `tcpi:"name=rcv_ssthresh,prom_type=gauge,prom_help='Current Window Clamp. Receiver algorithm to avoid allocating excessive receive buffers.'" json:"rcv_ssthresh,omitempty"`
+	RTT                    time.Duration    `tcpi:"name=rtt,prom_type=gauge,prom_help='Smoothed Round Trip Time (RTT). The Linux implementation differs from the standard.'" json:"rtt,omitempty"`
+	RTTVar                 time.Duration    `tcpi:"name=rttvar,prom_type=gauge,prom_help='RTT variance. The Linux implementation differs from the standard.'" json:"rttvar,omitempty"`
+	SndSSThresh            uint32           `tcpi:"name=snd_ssthresh,prom_type=gauge,prom_help='Slow Start Threshold. Value controlled by the selected congestion control algorithm.'" json:"snd_ssthresh,omitempty"`
+	SndCWnd                uint32           `tcpi:"name=snd_cwnd,prom_type=gauge,prom_help='Congestion Window. Value controlled by the selected congestion control algorithm.'" json:"snd_cwnd,omitempty"`
+	AdvMSS                 uint32           `tcpi:"name=advmss,prom_type=gauge,prom_help='Advertised maximum segment size.'" json:"advmss,omitempty"`
+	Reordering             uint32           `tcpi:"name=reordering,prom_type=gauge,prom_help='Maximum observed reordering distance.'" json:"reordering,omitempty"`
+	RcvRTT                 time.Duration    `tcpi:"name=rcv_rtt,prom_type=gauge,prom_help='Receiver Side RTT estimate.'" json:"rcv_rtt,omitempty"`
+	RcvSpace               uint32           `tcpi:"name=rcv_space,prom_type=gauge,prom_help='Space reserved for the receive queue. Typically updated by receiver side auto-tuning.'" json:"rcv_space,omitempty"`
+	TotalRetrans           uint32           `tcpi:"name=total_retrans,prom_type=gauge,prom_help='Total number of segments containing retransmitted data.'" json:"total_retrans,omitempty"`
+	PacingRate             NullableUint64   `tcpi:"name=pacing_rate,prom_type=gauge,prom_help='Current Pacing Rate, nominally updated by congestion control.'" json:"pacing_rate,omitempty"`
+	MaxPacingRate          NullableUint64   `tcpi:"name=max_pacing_rate,prom_type=gauge,prom_help='Settable pacing rate clamp. Set with setsockopt( ..SO_MAX_PACING_RATE.. ).'" json:"max_pacing_rate,omitempty"`
+	BytesAcked             NullableUint64   `tcpi:"name=bytes_acked,prom_type=gauge,prom_help='The number of data bytes for which cumulative acknowledgments have been received | RFC4898 tcpEStatsAppHCThruOctetsAcked.'" json:"bytes_acked,omitempty"`
+	BytesReceived          NullableUint64   `tcpi:"name=bytes_received,prom_type=counter,prom_help='The number of data bytes for which cumulative acknowledgments have been sent | RFC4898 tcpEStatsAppHCThruOctetsReceived.'" json:"bytes_received,omitempty"`
+	SegsOut                NullableUint32   `tcpi:"name=segs_out,prom_type=gauge,prom_help='The number of segments transmitted. Includes data and pure ACKs | RFC4898 tcpEStatsPerfSegsOut.'" json:"segs_out,omitempty"`
+	SegsIn                 NullableUint32   `tcpi:"name=segs_in,prom_type=gauge,prom_help='The number of segments received. Includes data and pure ACKs | RFC4898 tcpEStatsPerfSegsIn.'" json:"segs_in,omitempty"`
+	NotsentBytes           NullableUint32   `tcpi:"name=notsent_bytes,prom_type=gauge,prom_help='Number of bytes queued in the send buffer that have not been sent.'" json:"notsent_bytes,omitempty"`
+	MinRTT                 NullableDuration `tcpi:"name=min_rtt,prom_type=gauge,prom_help='Minimum RTT. From an older, pre-BBR algorithm.'" json:"min_rtt,omitempty"`
+	DataSegsIn             NullableUint32   `tcpi:"name=data_segs_in,prom_type=gauge,prom_help='Input segments carrying data (len>0) | RFC4898 tcpEStatsDataSegsIn (actually tcpEStatsPerfDataSegsIn).'" json:"data_segs_in,omitempty"`
+	DataSegsOut            NullableUint32   `tcpi:"name=data_segs_out,prom_type=gauge,prom_help='Transmitted segments carrying data (len>0) | RFC4898 tcpEStatsDataSegsOut (actually tcpEStatsPerfDataSegsOut).'" json:"data_segs_out,omitempty"`
+	DeliveryRate           NullableUint64   `tcpi:"name=delivery_rate,prom_type=gauge,prom_help='Observed Maximum Delivery Rate.'" json:"delivery_rate,omitempty"`
+	BusyTime               NullableUint64   `tcpi:"name=busy_time,prom_type=gauge,prom_help='Time in usecs with outstanding (unacknowledged) data. Time when snd.una not equal to snd.next.'" json:"busy_time,omitempty"`
+	RwndLimited            NullableUint64   `tcpi:"name=rwnd_limited,prom_type=gauge,prom_help='Time in usecs spent limited by/waiting for receiver window.'" json:"rwnd_limited,omitempty"`
+	SndbufLimited          NullableUint64   `tcpi:"name=sndbuf_limited,prom_type=gauge,prom_help='Time in usecs spent limited by/waiting for sender buffer space. This only includes the time when TCP transmissions are starved for data, but the application has been stopped because the buffer is full and can not be grown for some reason.'" json:"sndbuf_limited,omitempty"`
+	Delivered              NullableUint32   `tcpi:"name=delivered,prom_type=gauge,prom_help='Data segments delivered to the receiver including retransmits. As reported by returning ACKs, used by ECN.'" json:"delivered,omitempty"`
+	DeliveredCE            NullableUint32   `tcpi:"name=delivered_ce,prom_type=gauge,prom_help='ECE marked data segments delivered to the receiver including retransmits. As reported by returning ACKs, used by ECN.'" json:"delivered_ce,omitempty"`
+	BytesSent              NullableUint64   `tcpi:"name=bytes_sent,prom_type=gauge,prom_help='Payload bytes sent (excludes headers, includes retransmissions) | RFC4898 tcpEStatsPerfHCDataOctetsOut.'" json:"bytes_sent,omitempty"`
+	BytesRetrans           NullableUint64   `tcpi:"name=bytes_retrans,prom_type=gauge,prom_help='Bytes retransmitted. May include headers and new data carried with a retransmission (for thin flows) | RFC4898 tcpEStatsPerfOctetsRetrans.'" json:"bytes_retrans,omitempty"`
+	DSACKDups              NullableUint32   `tcpi:"name=dsack_dups,prom_type=gauge,prom_help='Duplicate segments reported by DSACK | RFC4898 tcpEStatsStackDSACKDups.'" json:"dsack_dups,omitempty"`
+	ReordSeen              NullableUint32   `tcpi:"name=reord_seen,prom_type=counter,prom_help='Received ACKs that were out of order. Estimates reordering on the return path.'" json:"reord_seen,omitempty"`
+	RcvOOOPack             NullableUint32   `tcpi:"name=rcv_ooopack,prom_type=counter,prom_help='Out-of-order packets received.'" json:"rcv_ooopack,omitempty"`
+	SndWnd                 NullableUint32   `tcpi:"name=snd_wnd,prom_type=gauge,prom_help='Peers advertised receive window after scaling (bytes).'" json:"snd_wnd,omitempty"`
+	RcvWnd                 NullableUint32   `tcpi:"name=rcv_wnd,prom_type=gauge,prom_help='local advertised receive window after scaling (bytes).'" json:"rcv_wnd,omitempty"`
+	Rehash                 NullableUint32   `tcpi:"name=rehash,prom_type=gauge,prom_help='PLB or timeout triggered rehash attempts.'" json:"rehash,omitempty"`
+	TotalRTO               NullableUint16   `tcpi:"name=total_rto,prom_type=counter,prom_help='Total number of RTO timeouts, including SYN/SYN-ACK and recurring timeouts.'" json:"total_rto,omitempty"`
+	TotalRTORecoveries     NullableUint16   `tcpi:"name=total_rto_recoveries,prom_type=counter,prom_help='Total number of RTO recoveries, including any unfinished recovery.'" json:"total_rto_recoveries,omitempty"`
+	TotalRTOTime           NullableUint32   `tcpi:"name=total_rto_time,prom_type=counter,prom_help='Total time spent in RTO recoveries in milliseconds, including any unfinished recovery.'" json:"total_rto_time,omitempty"`
 }
 
 // Unpack copies fields from RawTCPInfo to TCPInfo, taking care of the bitfields and marking fields not provided
 // by older kernel versions as null. In the future it may deal with varying lengths of the struct returned by the
 // system call (i.e., kernels older than 5.4.0).
-func (packed *RawTCPInfo) Unpack() *TCPInfo {
-	var unpacked TCPInfo
+func (packed *RawInfo) Unpack() *SysInfo {
+	var unpacked SysInfo
 
 	unpacked.State = packed.state
+	unpacked.StateName = tcpStateMap[packed.state]
+
 	unpacked.CAState = packed.ca_state
 	unpacked.Retransmits = packed.retransmits
 	unpacked.Probes = packed.probes
 	unpacked.Backoff = packed.backoff
-	unpacked.Options = packed.options
 	unpacked.SndWScale = packed.bitfield0 & 0x0f
 	unpacked.RcvWScale = packed.bitfield0 >> 4
 
@@ -203,8 +204,8 @@ func (packed *RawTCPInfo) Unpack() *TCPInfo {
 		unpacked.FastOpenClientFail.Value = (packed.bitfield1 >> 1) & 0x3
 	}
 
-	unpacked.RTO = packed.rto
-	unpacked.ATO = packed.ato
+	unpacked.RTO = time.Duration(packed.rto) * time.Millisecond
+	unpacked.ATO = time.Duration(packed.ato) * time.Millisecond
 	unpacked.SndMSS = packed.snd_mss
 	unpacked.RcvMSS = packed.rcv_mss
 	unpacked.UnAcked = packed.unacked
@@ -212,22 +213,21 @@ func (packed *RawTCPInfo) Unpack() *TCPInfo {
 	unpacked.Lost = packed.lost
 	unpacked.Retrans = packed.retrans
 	unpacked.Fackets = packed.fackets
-	unpacked.LastDataSent = packed.last_data_sent
-	unpacked.LastAckSent = packed.last_ack_sent
-	unpacked.LastDataRecv = packed.last_data_recv
-	unpacked.LastAckRecv = packed.last_ack_recv
+	unpacked.LastDataSent = time.Duration(packed.last_data_sent) * time.Millisecond
+	unpacked.LastAckSent = time.Duration(packed.last_ack_sent) * time.Millisecond
+	unpacked.LastDataRecv = time.Duration(packed.last_data_recv) * time.Millisecond
+	unpacked.LastAckRecv = time.Duration(packed.last_ack_recv) * time.Millisecond
 	unpacked.PMTU = packed.pmtu
 	unpacked.RcvSSThresh = packed.rcv_ssthresh
-	unpacked.RTT = packed.rtt
-	unpacked.RTTVar = packed.rttvar
+	unpacked.RTT = time.Duration(packed.rtt) * time.Millisecond
+	unpacked.RTTVar = time.Duration(packed.rttvar) * time.Millisecond
 	unpacked.SndSSThresh = packed.snd_ssthresh
 	unpacked.SndCWnd = packed.snd_cwnd
 	unpacked.AdvMSS = packed.advmss
 	unpacked.Reordering = packed.reordering
-	unpacked.RcvRTT = packed.rcv_rtt
+	unpacked.RcvRTT = time.Duration(packed.rcv_rtt) * time.Millisecond
 	unpacked.RcvSpace = packed.rcv_space
 	unpacked.TotalRetrans = packed.total_retrans
-
 	unpacked.PacingRate = NullableUint64{Valid: false}
 	unpacked.MaxPacingRate = NullableUint64{Valid: false}
 	if kernelVersionIsAtLeast_3_15 {
@@ -256,14 +256,14 @@ func (packed *RawTCPInfo) Unpack() *TCPInfo {
 	}
 
 	unpacked.NotsentBytes = NullableUint32{Valid: false}
-	unpacked.MinRTT = NullableUint32{Valid: false}
+	unpacked.MinRTT = NullableDuration{Valid: false}
 	unpacked.DataSegsIn = NullableUint32{Valid: false}
 	unpacked.DataSegsOut = NullableUint32{Valid: false}
 	if kernelVersionIsAtLeast_4_6 {
 		unpacked.NotsentBytes.Valid = true
 		unpacked.NotsentBytes.Value = packed.notsent_bytes
 		unpacked.MinRTT.Valid = true
-		unpacked.MinRTT.Value = packed.min_rtt
+		unpacked.MinRTT.Value = time.Duration(packed.min_rtt) * time.Millisecond
 		unpacked.DataSegsIn.Valid = true
 		unpacked.DataSegsIn.Value = packed.data_segs_in
 		unpacked.DataSegsOut.Valid = true
@@ -338,7 +338,131 @@ func (packed *RawTCPInfo) Unpack() *TCPInfo {
 		unpacked.TotalRTOTime.Valid = true
 		unpacked.TotalRTOTime.Value = packed.total_rto_time
 	}
+
+	unpacked.Options = []Option{}
+	for _, flag := range tcpOptions {
+		if packed.options&flag == 0 {
+			continue
+		}
+		switch flag {
+		case TCPI_OPT_TIMESTAMPS, TCPI_OPT_SACK, TCPI_OPT_ECN, TCPI_OPT_ECN_SEEN, TCPI_OPT_SYN_DATA, TCPI_OPT_USEC_TS, TCPI_OPT_TFO_CHILD:
+			unpacked.Options = append(unpacked.Options, Option{Kind: tcpOptionsMap[flag], Value: 1})
+			unpacked.PeerOptions = append(unpacked.PeerOptions, Option{Kind: tcpOptionsMap[flag], Value: 1})
+		case TCPI_OPT_WSCALE:
+			unpacked.Options = append(unpacked.Options, Option{Kind: tcpOptionsMap[flag], Value: uint64(packed.snd_wnd)})
+			unpacked.PeerOptions = append(unpacked.PeerOptions, Option{Kind: tcpOptionsMap[flag], Value: uint64(packed.rcv_wnd)})
+		}
+	}
+
 	return &unpacked
+}
+
+func (s *SysInfo) ToInfo() *Info {
+	info := &Info{
+		State:               s.StateName,
+		Options:             s.Options,
+		PeerOptions:         s.PeerOptions,
+		SenderMSS:           uint64(s.SndMSS),
+		ReceiverMSS:         uint64(s.RcvMSS),
+		RTT:                 s.RTT,
+		RTTVar:              s.RTTVar,
+		RTO:                 s.RTO,
+		ATO:                 s.ATO,
+		LastDataSent:        s.LastDataSent,
+		LastDataReceived:    s.LastAckRecv,
+		LastAckReceived:     s.LastAckRecv,
+		ReceiverWindow:      uint64(s.RcvSpace),
+		SenderSSThreshold:   uint64(s.SndSSThresh),
+		ReceiverSSThreshold: uint64(s.RcvSSThresh),
+		SenderWindowSegs:    uint64(s.SndCWnd),
+		Sys:                 s,
+	}
+
+	info.Options = s.Options
+	info.PeerOptions = s.PeerOptions
+
+	return info
+}
+
+// TCP state constants from linux net/tcp_states.h
+const (
+	TCP_ESTABLISHED = iota + 1
+	TCP_SYN_SENT
+	TCP_SYN_RECV
+	TCP_FIN_WAIT1
+	TCP_FIN_WAIT2
+	TCP_TIME_WAIT
+	TCP_CLOSE
+	TCP_CLOSE_WAIT
+	TCP_LAST_ACK
+	TCP_LISTEN
+	TCP_CLOSING
+	TCP_NEW_SYN_RECV
+)
+
+var tcpStateMap = map[uint8]string{
+	TCP_ESTABLISHED: "ESTABLISHED",
+	TCP_SYN_SENT:    "SYN_SENT",
+	TCP_SYN_RECV:    "SYN_RECV",
+	TCP_FIN_WAIT1:   "FIN_WAIT1",
+	TCP_FIN_WAIT2:   "FIN_WAIT2",
+	TCP_TIME_WAIT:   "TIME_WAIT",
+	TCP_CLOSE:       "CLOSE",
+	TCP_CLOSE_WAIT:  "CLOSE_WAIT",
+	TCP_LAST_ACK:    "LAST_ACK",
+	TCP_LISTEN:      "LISTEN",
+	TCP_CLOSING:     "CLOSING",
+}
+
+func tcpInfoTCPStateString(state uint8) string {
+	if s, ok := tcpStateMap[state]; ok {
+		return s
+	}
+	return fmt.Sprintf("UNKNOWN(%d)", state)
+}
+
+// TCP option flags from linux uapi/linux/tcp.h
+const (
+	TCPI_OPT_TIMESTAMPS = 1   /* Timestamps enabled */
+	TCPI_OPT_SACK       = 2   /* SACK permitted */
+	TCPI_OPT_WSCALE     = 4   /* Window scaling */
+	TCPI_OPT_ECN        = 8   /* ECN was negotiated at TCP session init */
+	TCPI_OPT_ECN_SEEN   = 16  /* Received at least one packet with ECT */
+	TCPI_OPT_SYN_DATA   = 32  /* SYN-ACK acked data in SYN sent or rcvd */
+	TCPI_OPT_USEC_TS    = 64  /* Timestamps are in usecs */
+	TCPI_OPT_TFO_CHILD  = 128 /* Child from a Fast Open option on SYN */
+)
+
+var tcpOptionsMap = map[uint8]string{
+	TCPI_OPT_TIMESTAMPS: "TIMESTAMPS",
+	TCPI_OPT_SACK:       "SACK",
+	TCPI_OPT_WSCALE:     "WSCALE",
+	TCPI_OPT_ECN:        "ECN",
+	TCPI_OPT_ECN_SEEN:   "ECN_SEEN",
+	TCPI_OPT_SYN_DATA:   "SYN_DATA",
+	TCPI_OPT_USEC_TS:    "USEC_TS",
+	TCPI_OPT_TFO_CHILD:  "TFO_CHILD",
+}
+
+var tcpOptions = []uint8{
+	TCPI_OPT_TIMESTAMPS,
+	TCPI_OPT_SACK,
+	TCPI_OPT_WSCALE,
+	TCPI_OPT_ECN,
+	TCPI_OPT_ECN_SEEN,
+	TCPI_OPT_SYN_DATA,
+	TCPI_OPT_USEC_TS,
+	TCPI_OPT_TFO_CHILD,
+}
+
+func tcpInfoTCPOptionsString(options uint8) string {
+	var opts []string
+	for _, flag := range tcpOptions {
+		if options&flag != 0 {
+			opts = append(opts, tcpOptionsMap[flag])
+		}
+	}
+	return strings.Join(opts, ",")
 }
 
 // ================================================================================================================== //
@@ -353,12 +477,12 @@ var (
 var ErrKernelTooOld = errors.New("tcp_info is not available on Linux prior to kernel 2.6.2")
 
 // GetTCPInfo calls getsockopt(2) on Linux to retrieve tcp_info and unpacks that into the golang-friendly TCPInfo.
-func GetTCPInfo(fd int) (*TCPInfo, error) {
+func GetTCPInfo(fd int) (*SysInfo, error) {
 	if !kernelVersionIsAtLeast_2_6_2 {
 		return nil, ErrKernelTooOld
 	}
 
-	var value RawTCPInfo
+	var value RawInfo
 	length := uint32(sizeOfRawTCPInfo)
 
 	_, _, errNo := syscall.Syscall6(

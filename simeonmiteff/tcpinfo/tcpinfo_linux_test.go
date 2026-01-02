@@ -31,7 +31,7 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 		FastOpenClientFail     NullableUint8
 	}
 
-	baseDesire := TCPInfo{
+	baseDesire := SysInfo{
 		DeliveryRateAppLimited: NullableBool{Valid: true},
 		FastOpenClientFail:     NullableUint8{Valid: true},
 		PacingRate:             NullableUint64{Valid: true},
@@ -41,7 +41,7 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 		SegsOut:                NullableUint32{Valid: true},
 		SegsIn:                 NullableUint32{Valid: true},
 		NotsentBytes:           NullableUint32{Valid: true},
-		MinRTT:                 NullableUint32{Valid: true},
+		MinRTT:                 NullableDuration{Valid: true},
 		DataSegsIn:             NullableUint32{Valid: true},
 		DataSegsOut:            NullableUint32{Valid: true},
 		DeliveryRate:           NullableUint64{Valid: true},
@@ -89,7 +89,7 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		want   *TCPInfo
+		want   *SysInfo
 	}{
 		{
 			name: "zeros",
@@ -193,7 +193,7 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var raw RawTCPInfo
+			var raw RawInfo
 			linuxKernelVersion = &tt.fields.kernel
 			adaptToKernelVersion()
 			if got := raw.Unpack(); !reflect.DeepEqual(got, tt.want) {
