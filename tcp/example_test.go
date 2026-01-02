@@ -12,8 +12,8 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/runZeroInc/sockstats/mikioh/tcpinfo"
 	"github.com/runZeroInc/sockstats/tcp"
-	"github.com/runZeroInc/sockstats/tcpinfo"
 	"github.com/runZeroInc/sockstats/tcpopt"
 )
 

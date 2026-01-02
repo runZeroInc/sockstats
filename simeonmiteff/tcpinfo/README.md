@@ -68,7 +68,7 @@ package main
 import (
 	"fmt"
 	"github.com/higebu/netfd"
-	"github.com/simeonmiteff/go-tcpinfo/pkg/linux"
+	"github.com/runZeroInc/sockstats/pkg/linux"
 	"net"
 )
 
@@ -124,7 +124,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/xid"
-	"github.com/simeonmiteff/go-tcpinfo/pkg/exporter"
+	"github.com/runZeroInc/sockstats/pkg/exporter"
 )
 
 func main() {

@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	tcpinfo "github.com/runZeroInc/sockstats/mikioh/tcpinfo"
 	"github.com/runZeroInc/sockstats/tcp"
 )
 

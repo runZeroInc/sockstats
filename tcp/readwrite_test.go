@@ -13,7 +13,7 @@ import (
 	"sync"
 	"testing"
 
-	tcpinfo "github.com/runZeroInc/sockstats"
+	tcpinfo "github.com/runZeroInc/sockstats/mikioh/tcpinfo"
 	"github.com/runZeroInc/sockstats/tcp"
 )
 
