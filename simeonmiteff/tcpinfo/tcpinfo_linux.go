@@ -508,3 +508,7 @@ func GetTCPInfo(fd int) (*SysInfo, error) {
 
 	return value.Unpack(), nil
 }
+
+func Supported() bool {
+	return kernelVersionIsAtLeast_2_6_2
+}

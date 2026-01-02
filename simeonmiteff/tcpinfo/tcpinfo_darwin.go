@@ -325,3 +325,7 @@ func GetTCPInfo(fd int) (*SysInfo, error) {
 
 	return value.Unpack(), nil
 }
+
+func Supported() bool {
+	return true
+}

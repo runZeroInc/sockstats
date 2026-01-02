@@ -1,7 +1,6 @@
 package sockstats
 
 import (
-	"encoding/json"
 	"net"
 	"time"
 
@@ -9,45 +8,71 @@ import (
 )
 
 const (
-	SockStatsOpen  = 0
-	SockStatsClose = 1
+	Opened = 0
+	Closed = 1
 )
 
 var StateMap = map[int]string{
-	SockStatsOpen:  "open",
-	SockStatsClose: "close",
+	Opened: "open",
+	Closed: "close",
 }
 
 type ReportStatsFn func(tic *Conn, state int)
 
 type Conn struct {
 	net.Conn
-	reportStats  func(*Conn, int)
-	OpenedAt     int64
-	ClosedAt     int64
-	FirstReadAt  int64
-	FirstWriteAt int64
-	SentBytes    int64
-	RecvBytes    int64
-	RecvErr      error
-	SentErr      error
-	Attempts     int
-	Details      map[string]any
+	reportStats     func(*Conn, int)
+	OpenedAt        int64
+	ClosedAt        int64
+	FirstReadAt     int64
+	FirstWriteAt    int64
+	SentBytes       int64
+	RecvBytes       int64
+	RecvErr         error
+	SentErr         error
+	InfoErr         error
+	Attempts        int
+	OpenedInfo      *tcpinfo.Info
+	ClosedInfo      *tcpinfo.Info
+	supportsTCPInfo bool
 }
 
+// WrapConn wraps the given net.Conn, triggers an immediate report in Open state,
+// and returns the wrapped connection. Reads and writes are tracked and the final
+// report is triggered on Close.
 func WrapConn(ncon net.Conn, reportStatsFn ReportStatsFn) net.Conn {
 	w := &Conn{
-		Conn:        ncon,
-		reportStats: reportStatsFn,
-		OpenedAt:    time.Now().UnixNano(),
-		Details:     make(map[string]any),
+		Conn:            ncon,
+		reportStats:     reportStatsFn,
+		OpenedAt:        time.Now().UnixNano(),
+		supportsTCPInfo: tcpinfo.Supported(),
 	}
-	w.gatherAndReport(SockStatsOpen)
+	w.gatherAndReport(Opened)
 	return w
 }
 
 func (w *Conn) gatherAndReport(state int) {
 	if w.reportStats == nil {
+		return
+	}
+
+	// Only gather TCP info on open and close events
+	if state != Opened && state != Closed {
+		return
+	}
+
+	// Prevent multiple reports for open/close states
+	if state == Opened && w.OpenedInfo != nil {
+		return
+	} else if state == Closed && w.ClosedInfo != nil {
+		return
+	}
+
+	// Write the report at the end regardless of success or failure
+	defer w.reportStats(w, state)
+
+	// Skipped platform or previously errored
+	if !w.supportsTCPInfo || w.InfoErr != nil {
 		return
 	}
 
@@ -61,23 +86,24 @@ func (w *Conn) gatherAndReport(state int) {
 		return
 	}
 
-	var tcpInfo *tcpinfo.SysInfo
+	var sysInfo *tcpinfo.SysInfo
 	if err := rawConn.Control(func(fd uintptr) {
-		tcpInfo, err = tcpinfo.GetTCPInfo(int(fd))
+		sysInfo, err = tcpinfo.GetTCPInfo(int(fd))
 	}); err != nil {
+		w.InfoErr = err
 		return
 	}
-	b, err := json.Marshal(tcpInfo)
-	if err != nil {
+
+	if state == Opened {
+		w.OpenedInfo = sysInfo.ToInfo()
 		return
 	}
-	if err := json.Unmarshal(b, &w.Details); err != nil {
-		return
-	}
-	w.reportStats(w, state)
+
+	w.ClosedInfo = sysInfo.ToInfo()
 }
 
 // SetConnectionAttempts stores the number of attempts that were needed to open this connection.
+// This is managed externally by the caller, but reported in the final stats.
 func (w *Conn) SetConnectionAttempts(attempts int) {
 	w.Attempts = attempts
 }
@@ -85,11 +111,11 @@ func (w *Conn) SetConnectionAttempts(attempts int) {
 // Close invokes the reportWrapper with a close event before closing the connection.
 func (w *Conn) Close() error {
 	w.ClosedAt = time.Now().UnixNano()
-	w.reportStats(w, SockStatsClose)
+	w.reportStats(w, Closed)
 	return w.Conn.Close()
 }
 
-// Read wraps the underlying Read method and tracks the data
+// Read wraps the underlying Read method and tracks the bytes received
 func (w *Conn) Read(b []byte) (int, error) {
 	n, err := w.Conn.Read(b)
 	if err == nil && w.RecvBytes == 0 && n > 0 {
@@ -103,7 +129,7 @@ func (w *Conn) Read(b []byte) (int, error) {
 	return n, err
 }
 
-// Write wraps the underlying Write method and tracks the data
+// Write wraps the underlying Write method and tracks the bytes sent
 func (w *Conn) Write(b []byte) (int, error) {
 	n, err := w.Conn.Write(b)
 	if err == nil && w.SentBytes == 0 && n > 0 {
