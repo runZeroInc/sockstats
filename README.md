@@ -53,7 +53,13 @@ func main() {
 }
 ```
 
-The `conniver.Conn` provides quite a few exported fields:
+# Operating Systems
+
+The current code supports detailed TCPINFO collection for Linux and macOS. 
+
+# Examples
+
+The `conniver.Conn` struct includes basic socket details in addition to TCPInfo fields. 
 ```go
 type Conn struct {
 	net.Conn                // The wrapped net.Conn
@@ -72,7 +78,7 @@ type Conn struct {
 }
 ```
 
-The `tcpinfo.Info` structure contains OS-normalized fields AND the entire platform-specific information structure.
+The `tcpinfo.Info` structure contains OS-normalized fields AND the entire platform-specific TCPINFO structure.
 ```go
 type Info struct {
 	State               string        // Connection state
@@ -95,6 +101,8 @@ type Info struct {
 	Sys                 *SysInfo      // Platform-specific information
 }
 ```
+
+The `*SysInfo` fields vary dramatically by operating system and require OS build tags to use correctly.
 
 The function passed to `conniver.WrapConn` is called for both the `opened` and `closed` states.
 The `opened` callback fires right *after* the connection is established.
