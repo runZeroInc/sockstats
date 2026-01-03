@@ -27,12 +27,14 @@ type Conn struct {
 	reportStats     func(*Conn, int) `json:"-"`
 	OpenedAt        int64            `json:"openedAt,omitempty"`
 	ClosedAt        int64            `json:"closedAt,omitempty"`
-	FirstReadAt     int64            `json:"firstReadAt,omitempty"`
-	FirstWriteAt    int64            `json:"firstWriteAt,omitempty"`
-	SentBytes       int64            `json:"sentBytes,omitempty"`
-	RecvBytes       int64            `json:"recvBytes,omitempty"`
-	RecvErr         error            `json:"recvErr,omitempty"`
-	SentErr         error            `json:"sentErr,omitempty"`
+	FirstRxAt       int64            `json:"firstRxAt,omitempty"`
+	FirstTxAt       int64            `json:"firstTxAt,omitempty"`
+	LastRxAt        int64            `json:"lastRxAt,omitempty"`
+	LastTxAt        int64            `json:"lastTxAt,omitempty"`
+	TxBytes         int64            `json:"txBytes"`
+	RxBytes         int64            `json:"rxBytes"`
+	RxErr           error            `json:"rxErr,omitempty"`
+	TxErr           error            `json:"txErr,omitempty"`
 	InfoErr         error            `json:"infoErr,omitempty"`
 	Attempts        int              `json:"attempts,omitempty"`
 	OpenedInfo      *tcpinfo.Info    `json:"openedInfo,omitempty"`
@@ -130,13 +132,18 @@ func (w *Conn) Close() error {
 // Read wraps the underlying Read method and tracks the bytes received
 func (w *Conn) Read(b []byte) (int, error) {
 	n, err := w.Conn.Read(b)
-	if err == nil && w.RecvBytes == 0 && n > 0 {
-		// Track the timestamp of the first successful read
-		w.FirstReadAt = time.Now().UnixNano()
+	if err == nil && n > 0 {
+		ts := time.Now().UnixNano()
+		if w.FirstRxAt == 0 {
+			w.FirstRxAt = ts
+			w.LastRxAt = ts
+		} else {
+			w.LastRxAt = ts
+		}
 	}
-	w.RecvBytes += int64(n)
+	w.RxBytes += int64(n)
 	if err, ok := err.(net.Error); ok && !err.Timeout() {
-		w.RecvErr = err
+		w.RxErr = err
 	}
 	return n, err
 }
@@ -144,14 +151,19 @@ func (w *Conn) Read(b []byte) (int, error) {
 // Write wraps the underlying Write method and tracks the bytes sent
 func (w *Conn) Write(b []byte) (int, error) {
 	n, err := w.Conn.Write(b)
-	if err == nil && w.SentBytes == 0 && n > 0 {
-		// Track the timestamp of the first successful write
-		w.FirstWriteAt = time.Now().UnixNano()
+	if err == nil && n > 0 {
+		ts := time.Now().UnixNano()
+		if w.FirstTxAt == 0 {
+			w.FirstTxAt = ts
+			w.LastTxAt = ts
+		} else {
+			w.LastTxAt = ts
+		}
 	}
-	w.SentBytes += int64(n)
-	w.SentErr = err
+	w.TxBytes += int64(n)
+	w.TxErr = err
 	if err, ok := err.(net.Error); ok && !err.Timeout() {
-		w.SentErr = err
+		w.TxErr = err
 	}
 	return n, err
 }

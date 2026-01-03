@@ -25,8 +25,8 @@ const (
 func TestRawTCPInfo_Unpack(t *testing.T) {
 	type fields struct {
 		kernel                 kernel.VersionInfo
-		SendWScale             uint8
-		RecvWScale             uint8
+		TxWindowScale          uint8
+		RxWindowScale          uint8
 		DeliveryRateAppLimited NullableBool
 		FastOpenClientFail     NullableUint8
 	}
@@ -46,17 +46,17 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 		DataSegsOut:            NullableUint32{Valid: true},
 		DeliveryRate:           NullableUint64{Valid: true},
 		BusyTime:               NullableUint64{Valid: true},
-		RwndLimited:            NullableUint64{Valid: true},
-		SndbufLimited:          NullableUint64{Valid: true},
+		RxWindowLimited:        NullableUint64{Valid: true},
+		TxBufferLimited:        NullableUint64{Valid: true},
 		Delivered:              NullableUint32{Valid: true},
 		DeliveredCE:            NullableUint32{Valid: true},
 		BytesSent:              NullableUint64{Valid: true},
 		BytesRetrans:           NullableUint64{Valid: true},
 		DSACKDups:              NullableUint32{Valid: true},
 		ReordSeen:              NullableUint32{Valid: true},
-		RcvOOOPacket:           NullableUint32{Valid: true},
-		SendWindow:             NullableUint32{Valid: true},
-		RecvWindow:             NullableUint32{Valid: true},
+		RxOutOfOrder:           NullableUint32{Valid: true},
+		TxWindow:               NullableUint32{Valid: true},
+		RxWindow:               NullableUint32{Valid: true},
 		Rehash:                 NullableUint32{Valid: true},
 		TotalRTO:               NullableUint16{Valid: true},
 		TotalRTORecoveries:     NullableUint16{Valid: true},
@@ -75,16 +75,16 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 	wanFastOpenClientFail2.FastOpenClientFail.Value = 2
 
 	wantSndWScale1 := baseDesire
-	wantSndWScale1.SndWScale = 1
+	wantSndWScale1.TxWindowScale = 1
 
 	wantRcvWScale1 := baseDesire
-	wantRcvWScale1.RcvWScale = 1
+	wantRcvWScale1.RxWindowScale = 1
 
 	wantSndWScaleF := baseDesire
-	wantSndWScaleF.SndWScale = 0xf
+	wantSndWScaleF.TxWindowScale = 0xf
 
 	wantRcvWScaleF := baseDesire
-	wantRcvWScaleF.RcvWScale = 0xf
+	wantRcvWScaleF.RxWindowScale = 0xf
 
 	tests := []struct {
 		name   string
@@ -95,8 +95,8 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 			name: "zeros",
 			fields: fields{
 				kernel:                 kernel.VersionInfo{Kernel: minKernel, Major: minKernelMajor, Minor: minKernelMinor},
-				SendWScale:             0,
-				RecvWScale:             0,
+				TxWindowScale:          0,
+				RxWindowScale:          0,
 				DeliveryRateAppLimited: NullableBool{},
 				FastOpenClientFail:     NullableUint8{},
 			},
@@ -106,8 +106,8 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 			name: "SndWScale1",
 			fields: fields{
 				kernel:                 kernel.VersionInfo{Kernel: minKernel, Major: minKernelMajor, Minor: minKernelMinor},
-				SendWScale:             1,
-				RecvWScale:             0,
+				TxWindowScale:          1,
+				RxWindowScale:          0,
 				DeliveryRateAppLimited: NullableBool{Valid: true, Value: false},
 				FastOpenClientFail:     NullableUint8{Valid: true, Value: 0},
 			},
@@ -117,8 +117,8 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 			name: "RcvWScale1",
 			fields: fields{
 				kernel:                 kernel.VersionInfo{Kernel: minKernel, Major: minKernelMajor, Minor: minKernelMinor},
-				SendWScale:             0,
-				RecvWScale:             1,
+				TxWindowScale:          0,
+				RxWindowScale:          1,
 				DeliveryRateAppLimited: NullableBool{Valid: true, Value: false},
 				FastOpenClientFail:     NullableUint8{Valid: true, Value: 0},
 			},
@@ -128,8 +128,8 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 			name: "SndWScaleF",
 			fields: fields{
 				kernel:                 kernel.VersionInfo{Kernel: minKernel, Major: minKernelMajor, Minor: minKernelMinor},
-				SendWScale:             0xf,
-				RecvWScale:             0,
+				TxWindowScale:          0xf,
+				RxWindowScale:          0,
 				DeliveryRateAppLimited: NullableBool{Valid: true, Value: false},
 				FastOpenClientFail:     NullableUint8{Valid: true, Value: 0},
 			},
@@ -139,8 +139,8 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 			name: "RcvWScaleF",
 			fields: fields{
 				kernel:                 kernel.VersionInfo{Kernel: minKernel, Major: minKernelMajor, Minor: minKernelMinor},
-				SendWScale:             0,
-				RecvWScale:             0xf,
+				TxWindowScale:          0,
+				RxWindowScale:          0xf,
 				DeliveryRateAppLimited: NullableBool{Valid: true, Value: false},
 				FastOpenClientFail:     NullableUint8{Valid: true, Value: 0},
 			},
@@ -150,8 +150,8 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 			name: "DeliveryRateAppLimited",
 			fields: fields{
 				kernel:                 kernel.VersionInfo{Kernel: minKernel, Major: minKernelMajor, Minor: minKernelMinor},
-				SendWScale:             0,
-				RecvWScale:             0,
+				TxWindowScale:          0,
+				RxWindowScale:          0,
 				DeliveryRateAppLimited: NullableBool{Valid: true, Value: true},
 				FastOpenClientFail:     NullableUint8{Valid: true, Value: 0},
 			},
@@ -161,8 +161,8 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 			name: "FastOpenClientFail0",
 			fields: fields{
 				kernel:                 kernel.VersionInfo{Kernel: minKernel, Major: minKernelMajor, Minor: minKernelMinor},
-				SendWScale:             0,
-				RecvWScale:             0,
+				TxWindowScale:          0,
+				RxWindowScale:          0,
 				DeliveryRateAppLimited: NullableBool{Valid: true, Value: false},
 				FastOpenClientFail:     NullableUint8{Valid: true, Value: 0},
 			},
@@ -172,8 +172,8 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 			name: "FastOpenClientFail0",
 			fields: fields{
 				kernel:                 kernel.VersionInfo{Kernel: minKernel, Major: minKernelMajor, Minor: minKernelMinor},
-				SendWScale:             0,
-				RecvWScale:             0,
+				TxWindowScale:          0,
+				RxWindowScale:          0,
 				DeliveryRateAppLimited: NullableBool{Valid: true, Value: false},
 				FastOpenClientFail:     NullableUint8{Valid: true, Value: 1},
 			},
@@ -183,8 +183,8 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 			name: "FastOpenClientFail2",
 			fields: fields{
 				kernel:                 kernel.VersionInfo{Kernel: minKernel, Major: minKernelMajor, Minor: minKernelMinor},
-				SendWScale:             0,
-				RecvWScale:             0,
+				TxWindowScale:          0,
+				RxWindowScale:          0,
 				DeliveryRateAppLimited: NullableBool{Valid: true, Value: false},
 				FastOpenClientFail:     NullableUint8{Valid: true, Value: 2},
 			},

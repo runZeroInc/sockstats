@@ -96,18 +96,18 @@ type RawInfo struct {
 type SysInfo struct {
 	State               uint8    `tcpi:"name=state,prom_type=gauge,prom_help='Connection state, see bsd/netinet/tcp_fsm.h'" json:"-"`
 	StateName           string   `tcpi:"name=state_name,prom_type=gauge,prom_help='Connection state name, see bsd/netinet/tcp_fsm.h'" json:"state,omitempty"`
-	SndWScale           uint8    `tcpi:"name=snd_wscale,prom_type=gauge,prom_help='Window scaling of send-half of connection.'" json:"sendWScale,omitempty"`
-	RcvWScale           uint8    `tcpi:"name=rcv_wscale,prom_type=gauge,prom_help='Window scaling of receive-half of connection.'" json:"recvWScale,omitempty"`
-	Options             []Option `tcpi:"name=options,prom_type=gauge,prom_help='TCP options supported.'" json:"options,omitempty"`
-	PeerOptions         []Option `tcpi:"name=peer_options,prom_type=gauge,prom_help='TCP options supported.'" json:"peerOptions,omitempty"`
+	TxWindowScale       uint8    `tcpi:"name=snd_wscale,prom_type=gauge,prom_help='Window scaling of send-half of connection.'" json:"txWScale,omitempty"`
+	RxWindowScale       uint8    `tcpi:"name=rcv_wscale,prom_type=gauge,prom_help='Window scaling of receive-half of connection.'" json:"rxWScale,omitempty"`
+	TxOptions           []Option `tcpi:"name=options,prom_type=gauge,prom_help='TCP options supported.'" json:"txOptions,omitempty"`
+	RxOptions           []Option `tcpi:"name=peer_options,prom_type=gauge,prom_help='TCP options supported.'" json:"rxOptions,omitempty"`
 	Flags               string   `tcpi:"name=flags,prom_type=gauge,prom_help='TCP flags.'" json:"flags,omitempty"`
 	RTO                 uint64   `tcpi:"name=rto,prom_type=gauge,prom_help='Retransmit timeout in nanoseconds.'" json:"rto,omitempty"`
 	MaxSeg              uint32   `tcpi:"name=max_seg,prom_type=gauge,prom_help='Maximum segment size supported in bytes.'" json:"mss,omitempty"`
-	SendSSThresh        uint32   `tcpi:"name=send_ssthresh,prom_type=gauge,prom_help='Slow start threshold in bytes.'" json:"sendSSThreshold,omitempty"`
-	SendCwnd            uint32   `tcpi:"name=send_cwnd,prom_type=gauge,prom_help='Send congestion window in bytes.'" json:"sendCWindowBytes,omitempty"`
-	SendWnd             uint32   `tcpi:"name=send_wnd,prom_type=gauge,prom_help='Send window in bytes.'" json:"sendWnd,omitempty"`
-	SendSBBytes         uint32   `tcpi:"name=send_sbbytes,prom_type=gauge,prom_help='Bytes in send socket buffer, including in-flight data.'" json:"sendSBBytes,omitempty"`
-	RecvWnd             uint32   `tcpi:"name=recv_wnd,prom_type=gauge,prom_help='Receive window in bytes.'" json:"recvWnd,omitempty"`
+	TxSSThreshold       uint32   `tcpi:"name=send_ssthresh,prom_type=gauge,prom_help='Slow start threshold in bytes.'" json:"txSSThreshold,omitempty"`
+	TxCongestionWindow  uint32   `tcpi:"name=send_cwnd,prom_type=gauge,prom_help='Send congestion window in bytes.'" json:"txCongestionWindowBytes,omitempty"`
+	TxWindow            uint32   `tcpi:"name=send_wnd,prom_type=gauge,prom_help='Send window in bytes.'" json:"txWindow,omitempty"`
+	TxSendBufferBytes   uint32   `tcpi:"name=send_sbbytes,prom_type=gauge,prom_help='Bytes in send socket buffer, including in-flight data.'" json:"txSendBufferBytes,omitempty"`
+	RxWindow            uint32   `tcpi:"name=recv_wnd,prom_type=gauge,prom_help='Receive window in bytes.'" json:"rxWindow,omitempty"`
 	RTTCur              uint64   `tcpi:"name=rtt_cur,prom_type=gauge,prom_help='Most recent RTT in nanoseconds.'" json:"rttCur,omitempty"`
 	SRTT                uint64   `tcpi:"name=srtt,prom_type=gauge,prom_help='Average RTT in nanoseconds.'" json:"rttSmoothed,omitempty"`
 	RTTVar              uint64   `tcpi:"name=rtt_var,prom_type=gauge,prom_help='RTT variance in nanoseconds.'" json:"rttVar,omitempty"`
@@ -126,16 +126,16 @@ func (packed *RawInfo) Unpack() *SysInfo {
 	var unpacked SysInfo
 	unpacked.State = packed.State
 	unpacked.StateName = tcpStateMap[packed.State]
-	unpacked.SndWScale = packed.SendWscale
-	unpacked.RcvWScale = packed.RecvWscale
+	unpacked.TxWindowScale = packed.SendWscale
+	unpacked.RxWindowScale = packed.RecvWscale
 	unpacked.Flags = tcpInfoTCPFlagsString(packed.Flags)
 	unpacked.RTO = uint64(packed.RTO) * 1_000_000 // Convert ms to ns
 	unpacked.MaxSeg = packed.MaxSeg
-	unpacked.SendSSThresh = packed.SendSSThresh
-	unpacked.SendCwnd = packed.SendCwnd
-	unpacked.SendWnd = packed.SendWnd
-	unpacked.SendSBBytes = packed.SendSBBytes
-	unpacked.RecvWnd = packed.RecvWnd
+	unpacked.TxSSThreshold = packed.SendSSThresh
+	unpacked.TxCongestionWindow = packed.SendCwnd
+	unpacked.TxWindow = packed.SendWnd
+	unpacked.TxSendBufferBytes = packed.SendSBBytes
+	unpacked.RxWindow = packed.RecvWnd
 	unpacked.RTTCur = uint64(packed.RTTCur) * 1_000_000 // Convert ms to ns
 	unpacked.SRTT = uint64(packed.SRTT) * 1_000_000     // Convert ms to ns
 	unpacked.RTTVar = uint64(packed.RTTVar) * 1_000_000 // Convert ms to ns
@@ -148,18 +148,18 @@ func (packed *RawInfo) Unpack() *SysInfo {
 	unpacked.RxOutOfOrderBytes = packed.RxOutOfOrderBytes
 	unpacked.TxRetransmitPackets = packed.TxRetransmitPackets
 
-	unpacked.Options = []Option{}
+	unpacked.TxOptions = []Option{}
 	for _, flag := range tcpOptions {
 		if packed.Options&flag == 0 {
 			continue
 		}
 		switch flag {
 		case TCPCI_OPT_SACK, TCPCI_OPT_ECN, TCPCI_OPT_TIMESTAMPS:
-			unpacked.Options = append(unpacked.Options, Option{Kind: tcpOptionsMap[flag], Value: 0})
-			unpacked.PeerOptions = append(unpacked.PeerOptions, Option{Kind: tcpOptionsMap[flag], Value: 0})
+			unpacked.TxOptions = append(unpacked.TxOptions, Option{Kind: tcpOptionsMap[flag], Value: 0})
+			unpacked.RxOptions = append(unpacked.RxOptions, Option{Kind: tcpOptionsMap[flag], Value: 0})
 		case TCPCI_OPT_WSCALE:
-			unpacked.Options = append(unpacked.Options, Option{Kind: tcpOptionsMap[flag], Value: uint64(packed.SendWscale)})
-			unpacked.PeerOptions = append(unpacked.PeerOptions, Option{Kind: tcpOptionsMap[flag], Value: uint64(packed.RecvWscale)})
+			unpacked.TxOptions = append(unpacked.TxOptions, Option{Kind: tcpOptionsMap[flag], Value: uint64(packed.SendWscale)})
+			unpacked.RxOptions = append(unpacked.RxOptions, Option{Kind: tcpOptionsMap[flag], Value: uint64(packed.RecvWscale)})
 		}
 	}
 
@@ -168,24 +168,20 @@ func (packed *RawInfo) Unpack() *SysInfo {
 
 func (s *SysInfo) ToInfo() *Info {
 	info := &Info{
-		State:             s.StateName,
-		Options:           s.Options,
-		PeerOptions:       s.PeerOptions,
-		SenderMSS:         uint64(s.MaxSeg),
-		ReceiverMSS:       uint64(s.MaxSeg),
-		RTT:               time.Duration(s.SRTT),
-		RTTVar:            time.Duration(s.RTTVar),
-		RTO:               time.Duration(s.RTO),
-		ReceiverWindow:    uint64(s.RecvWnd),
-		SenderSSThreshold: uint64(s.SendSSThresh),
-		SenderWindowBytes: uint64(s.SendCwnd),
-		SenderWindowSegs:  uint64(s.SendWnd),
-		Sys:               s,
+		State:         s.StateName,
+		TxOptions:     s.TxOptions,
+		RxOptions:     s.RxOptions,
+		TxMSS:         uint64(s.MaxSeg),
+		RxMSS:         uint64(s.MaxSeg),
+		RTT:           time.Duration(s.SRTT),
+		RTTVar:        time.Duration(s.RTTVar),
+		RTO:           time.Duration(s.RTO),
+		RxWindow:      uint64(s.RxWindow),
+		TxSSThreshold: uint64(s.TxSSThreshold),
+		TxWindowBytes: uint64(s.TxCongestionWindow),
+		TxWindowSegs:  uint64(s.TxWindow),
+		Sys:           s,
 	}
-
-	info.Options = s.Options
-	info.PeerOptions = s.PeerOptions
-
 	return info
 }
 

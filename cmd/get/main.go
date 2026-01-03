@@ -33,7 +33,7 @@ func main() {
 				fmt.Printf("Connection %s -> %s took %s, sent:%d/recv:%d bytes, starting RTT %s(%s) and ending RTT %s(%s)\n%s\n\n",
 					c.LocalAddr().String(), c.RemoteAddr().String(),
 					time.Duration(c.ClosedAt-c.OpenedAt),
-					c.SentBytes, c.RecvBytes,
+					c.TxBytes, c.RxBytes,
 					c.OpenedInfo.RTT, c.OpenedInfo.RTTVar,
 					c.ClosedInfo.RTT, c.ClosedInfo.RTTVar,
 					string(raw),

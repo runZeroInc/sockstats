@@ -117,35 +117,35 @@ type SysInfo struct {
 	Retransmits            uint8            `tcpi:"name=retransmits,prom_type=gauge,prom_help='Number of timeouts (RTO based retransmissions) at this sequence (reset to zero on forward progress).'" json:"retransmits,omitempty"`
 	Probes                 uint8            `tcpi:"name=probes,prom_type=gauge,prom_help='Consecutive zero window probes that have gone unanswered.'" json:"probes,omitempty"`
 	Backoff                uint8            `tcpi:"name=backoff,prom_type=gauge,prom_help='Exponential timeout backoff counter. Increment on RTO, reset on successful RTT measurements.'" json:"backoff,omitempty"`
-	Options                []Option         `tcpi:"name=options,prom_type=gauge,prom_help='Bit encoded SYN options and other negotiations: TIMESTAMPS 0x1; SACK 0x2; WSCALE 0x4; ECN 0x8 - Was negotiated; ECN_SEEN - At least one ECT seen; SYN_DATA - SYN-ACK acknowledged data in SYN sent or rcvd.'" json:"options,omitempty"`
-	PeerOptions            []Option         `tcpi:"name=peer_options,prom_type=gauge,prom_help='Bit encoded SYN options and other negotiations: TIMESTAMPS 0x1; SACK 0x2; WSCALE 0x4; ECN 0x8 - Was negotiated; ECN_SEEN - At least one ECT seen; SYN_DATA - SYN-ACK acknowledged data in SYN sent or rcvd.'" json:"peerOptions,omitempty"`
-	SndWScale              uint8            `tcpi:"name=snd_wscale,prom_type=gauge,prom_help='Window scaling of send-half of connection (bit shift).'" json:"sendWScale,omitempty"`
-	RcvWScale              uint8            `tcpi:"name=rcv_wscale,prom_type=gauge,prom_help='Window scaling of receive-half of connection (bit shift).'" json:"recvWScale,omitempty"`
+	TxOptions              []Option         `tcpi:"name=options,prom_type=gauge,prom_help='Bit encoded SYN options and other negotiations: TIMESTAMPS 0x1; SACK 0x2; WSCALE 0x4; ECN 0x8 - Was negotiated; ECN_SEEN - At least one ECT seen; SYN_DATA - SYN-ACK acknowledged data in SYN sent or rcvd.'" json:"txOptions,omitempty"`
+	RxOptions              []Option         `tcpi:"name=peer_options,prom_type=gauge,prom_help='Bit encoded SYN options and other negotiations: TIMESTAMPS 0x1; SACK 0x2; WSCALE 0x4; ECN 0x8 - Was negotiated; ECN_SEEN - At least one ECT seen; SYN_DATA - SYN-ACK acknowledged data in SYN sent or rcvd.'" json:"rxOptions,omitempty"`
+	TxWindowScale          uint8            `tcpi:"name=snd_wscale,prom_type=gauge,prom_help='Window scaling of send-half of connection (bit shift).'" json:"txWindowScale,omitempty"`
+	RxWindowScale          uint8            `tcpi:"name=rcv_wscale,prom_type=gauge,prom_help='Window scaling of receive-half of connection (bit shift).'" json:"rxWindowScale,omitempty"`
 	DeliveryRateAppLimited NullableBool     `tcpi:"name=delivery_rate_app_limited,prom_type=gauge,prom_help='Flag indicating that rate measurements reflect non-network bottlenecks (1.0 = true, 0.0 = false).'" json:"deliveryRateAppLimited,omitempty"`
 	FastOpenClientFail     NullableUint8    `tcpi:"name=fastopen_client_fail,prom_type=gauge,prom_help='The reason why TCP fastopen failed. 0x0: unspecified; 0x1: no cookie sent; 0x2: SYN-ACK did not ack SYN data; 0x3: SYN-ACK did not ack SYN data after timeout (-1.0 if unavailable).'" json:"fastOpenClientFail,omitempty"`
 	RTO                    time.Duration    `tcpi:"name=rto,prom_type=gauge,prom_help='Retransmission Timeout. Quantized to system jiffies.'" json:"rto,omitempty"`
 	ATO                    time.Duration    `tcpi:"name=ato,prom_type=gauge,prom_help='Delayed ACK Timeout. Quantized to system jiffies.'" json:"ato,omitempty"`
-	SndMSS                 uint32           `tcpi:"name=snd_mss,prom_type=gauge,prom_help='Current Maximum Segment Size. Note that this can be smaller than the negotiated MSS for various reasons.'" json:"sendMSS,omitempty"`
-	RcvMSS                 uint32           `tcpi:"name=rcv_mss,prom_type=gauge,prom_help='Maximum observed segment size from the remote host. Used to trigger delayed ACKs.'" json:"recvMSS,omitempty"`
+	TxMSS                  uint32           `tcpi:"name=snd_mss,prom_type=gauge,prom_help='Current Maximum Segment Size. Note that this can be smaller than the negotiated MSS for various reasons.'" json:"txMSS,omitempty"`
+	RxMSS                  uint32           `tcpi:"name=rcv_mss,prom_type=gauge,prom_help='Maximum observed segment size from the remote host. Used to trigger delayed ACKs.'" json:"rxMSS,omitempty"`
 	UnAcked                uint32           `tcpi:"name=unacked,prom_type=gauge,prom_help='Number of segments between snd.nxt and snd.una. Accounting for the Pipe algorithm.'" json:"unacked,omitempty"`
 	Sacked                 uint32           `tcpi:"name=sacked,prom_type=gauge,prom_help='Scoreboard segment marked SACKED by sack blocks. Accounting for the Pipe algorithm.'" json:"sacked,omitempty"`
 	Lost                   uint32           `tcpi:"name=lost,prom_type=gauge,prom_help='Scoreboard segments marked lost by loss detection heuristics. Accounting for the Pipe algorithm.'" json:"lost,omitempty"`
 	Retrans                uint32           `tcpi:"name=retrans,prom_type=gauge,prom_help='Scoreboard segments marked retransmitted. Accounting for the Pipe algorithm.'" json:"retrans,omitempty"`
 	Fackets                uint32           `tcpi:"name=fackets,prom_type=counter,prom_help='Some counter in Forward Acknowledgment (FACK) TCP congestion control. M-Lab says this is unused?.'" json:"fackets,omitempty"`
-	LastDataSent           time.Duration    `tcpi:"name=last_data_sent,prom_type=gauge,prom_help='Time since last data segment was sent. Quantized to jiffies.'" json:"lastDataSent,omitempty"`
-	LastAckSent            time.Duration    `tcpi:"name=last_ack_sent,prom_type=gauge,prom_help='Time since last ACK was sent. Not implemented!.'" json:"lastAckSent,omitempty"`
-	LastDataRecv           time.Duration    `tcpi:"name=last_data_recv,prom_type=gauge,prom_help='Time since last data segment was received. Quantized to jiffies.'" json:"lastDataRecv,omitempty"`
-	LastAckRecv            time.Duration    `tcpi:"name=last_ack_recv,prom_type=gauge,prom_help='Time since last ACK was received. Quantized to jiffies.'" json:"lastAckRecv,omitempty"`
+	LastTxAt               time.Duration    `tcpi:"name=last_data_sent,prom_type=gauge,prom_help='Time since last data segment was sent. Quantized to jiffies.'" json:"lastTxAt,omitempty"`
+	LastTxAckAt            time.Duration    `tcpi:"name=last_ack_sent,prom_type=gauge,prom_help='Time since last ACK was sent. Not implemented!.'" json:"lastTxAckAt,omitempty"`
+	LastRxAt               time.Duration    `tcpi:"name=last_data_recv,prom_type=gauge,prom_help='Time since last data segment was received. Quantized to jiffies.'" json:"lastRxAt,omitempty"`
+	LastRxAckAt            time.Duration    `tcpi:"name=last_ack_recv,prom_type=gauge,prom_help='Time since last ACK was received. Quantized to jiffies.'" json:"lastRxAckAt,omitempty"`
 	PMTU                   uint32           `tcpi:"name=pmtu,prom_type=gauge,prom_help='Maximum IP Transmission Unit for this path.'" json:"pmtu,omitempty"`
-	RcvSSThresh            uint32           `tcpi:"name=rcv_ssthresh,prom_type=gauge,prom_help='Current Window Clamp. Receiver algorithm to avoid allocating excessive receive buffers.'" json:"recvSSThreshold,omitempty"`
+	RxSSThreshold          uint32           `tcpi:"name=rcv_ssthresh,prom_type=gauge,prom_help='Current Window Clamp. Receiver algorithm to avoid allocating excessive receive buffers.'" json:"rxSSThreshold,omitempty"`
 	RTT                    time.Duration    `tcpi:"name=rtt,prom_type=gauge,prom_help='Smoothed Round Trip Time (RTT). The Linux implementation differs from the standard.'" json:"rtt,omitempty"`
 	RTTVar                 time.Duration    `tcpi:"name=rttvar,prom_type=gauge,prom_help='RTT variance. The Linux implementation differs from the standard.'" json:"rttVar,omitempty"`
-	SndSSThresh            uint32           `tcpi:"name=snd_ssthresh,prom_type=gauge,prom_help='Slow Start Threshold. Value controlled by the selected congestion control algorithm.'" json:"sendSSThreshold,omitempty"`
-	SndCWnd                uint32           `tcpi:"name=snd_cwnd,prom_type=gauge,prom_help='Congestion Window. Value controlled by the selected congestion control algorithm.'" json:"sendCWindow,omitempty"`
+	TxSSThreshold          uint32           `tcpi:"name=snd_ssthresh,prom_type=gauge,prom_help='Slow Start Threshold. Value controlled by the selected congestion control algorithm.'" json:"txSSThreshold,omitempty"`
+	TxCongestionWindow     uint32           `tcpi:"name=snd_cwnd,prom_type=gauge,prom_help='Congestion Window. Value controlled by the selected congestion control algorithm.'" json:"txCongestionWindow,omitempty"`
 	AdvMSS                 uint32           `tcpi:"name=advmss,prom_type=gauge,prom_help='Advertised maximum segment size.'" json:"advMSS,omitempty"`
 	Reordering             uint32           `tcpi:"name=reordering,prom_type=gauge,prom_help='Maximum observed reordering distance.'" json:"reordering,omitempty"`
-	RcvRTT                 time.Duration    `tcpi:"name=rcv_rtt,prom_type=gauge,prom_help='Receiver Side RTT estimate.'" json:"recvRTT,omitempty"`
-	RcvSpace               uint32           `tcpi:"name=rcv_space,prom_type=gauge,prom_help='Space reserved for the receive queue. Typically updated by receiver side auto-tuning.'" json:"recvSpace,omitempty"`
+	RxRTT                  time.Duration    `tcpi:"name=rcv_rtt,prom_type=gauge,prom_help='Receiver Side RTT estimate.'" json:"rxRTT,omitempty"`
+	RxSpace                uint32           `tcpi:"name=rcv_space,prom_type=gauge,prom_help='Space reserved for the receive queue. Typically updated by receiver side auto-tuning.'" json:"rxSpace,omitempty"`
 	TotalRetrans           uint32           `tcpi:"name=total_retrans,prom_type=gauge,prom_help='Total number of segments containing retransmitted data.'" json:"totalRetrans,omitempty"`
 	PacingRate             NullableUint64   `tcpi:"name=pacing_rate,prom_type=gauge,prom_help='Current Pacing Rate, nominally updated by congestion control.'" json:"pacingRate,omitempty"`
 	MaxPacingRate          NullableUint64   `tcpi:"name=max_pacing_rate,prom_type=gauge,prom_help='Settable pacing rate clamp. Set with setsockopt( ..SO_MAX_PACING_RATE.. ).'" json:"maxPacingRate,omitempty"`
@@ -159,17 +159,17 @@ type SysInfo struct {
 	DataSegsOut            NullableUint32   `tcpi:"name=data_segs_out,prom_type=gauge,prom_help='Transmitted segments carrying data (len>0) | RFC4898 tcpEStatsDataSegsOut (actually tcpEStatsPerfDataSegsOut).'" json:"dataSegsOut,omitempty"`
 	DeliveryRate           NullableUint64   `tcpi:"name=delivery_rate,prom_type=gauge,prom_help='Observed Maximum Delivery Rate.'" json:"deliveryRate,omitempty"`
 	BusyTime               NullableUint64   `tcpi:"name=busy_time,prom_type=gauge,prom_help='Time in usecs with outstanding (unacknowledged) data. Time when snd.una not equal to snd.next.'" json:"busyTime,omitempty"`
-	RwndLimited            NullableUint64   `tcpi:"name=rwnd_limited,prom_type=gauge,prom_help='Time in usecs spent limited by/waiting for receiver window.'" json:"rwndLimited,omitempty"`
-	SndbufLimited          NullableUint64   `tcpi:"name=sndbuf_limited,prom_type=gauge,prom_help='Time in usecs spent limited by/waiting for sender buffer space. This only includes the time when TCP transmissions are starved for data, but the application has been stopped because the buffer is full and can not be grown for some reason.'" json:"sndbufLimited,omitempty"`
+	RxWindowLimited        NullableUint64   `tcpi:"name=rwnd_limited,prom_type=gauge,prom_help='Time in usecs spent limited by/waiting for receiver window.'" json:"rwndLimited,omitempty"`
+	TxBufferLimited        NullableUint64   `tcpi:"name=sndbuf_limited,prom_type=gauge,prom_help='Time in usecs spent limited by/waiting for sender buffer space. This only includes the time when TCP transmissions are starved for data, but the application has been stopped because the buffer is full and can not be grown for some reason.'" json:"sndbufLimited,omitempty"`
 	Delivered              NullableUint32   `tcpi:"name=delivered,prom_type=gauge,prom_help='Data segments delivered to the receiver including retransmits. As reported by returning ACKs, used by ECN.'" json:"delivered,omitempty"`
 	DeliveredCE            NullableUint32   `tcpi:"name=delivered_ce,prom_type=gauge,prom_help='ECE marked data segments delivered to the receiver including retransmits. As reported by returning ACKs, used by ECN.'" json:"deliveredCE,omitempty"`
 	BytesSent              NullableUint64   `tcpi:"name=bytes_sent,prom_type=gauge,prom_help='Payload bytes sent (excludes headers, includes retransmissions) | RFC4898 tcpEStatsPerfHCDataOctetsOut.'" json:"bytesSent,omitempty"`
 	BytesRetrans           NullableUint64   `tcpi:"name=bytes_retrans,prom_type=gauge,prom_help='Bytes retransmitted. May include headers and new data carried with a retransmission (for thin flows) | RFC4898 tcpEStatsPerfOctetsRetrans.'" json:"bytesRetrans,omitempty"`
 	DSACKDups              NullableUint32   `tcpi:"name=dsack_dups,prom_type=gauge,prom_help='Duplicate segments reported by DSACK | RFC4898 tcpEStatsStackDSACKDups.'" json:"dsackDups,omitempty"`
 	ReordSeen              NullableUint32   `tcpi:"name=reord_seen,prom_type=counter,prom_help='Received ACKs that were out of order. Estimates reordering on the return path.'" json:"reordSeen,omitempty"`
-	RcvOOOPacket             NullableUint32   `tcpi:"name=rcv_ooopack,prom_type=counter,prom_help='Out-of-order packets received.'" json:"recvOOOPackets,omitempty"`
-	SendWindow                 NullableUint32   `tcpi:"name=snd_wnd,prom_type=gauge,prom_help='Peers advertised receive window after scaling (bytes).'" json:"sendWnd,omitempty"`
-	RecvWindow                 NullableUint32   `tcpi:"name=rcv_wnd,prom_type=gauge,prom_help='local advertised receive window after scaling (bytes).'" json:"recvWnd,omitempty"`
+	RxOutOfOrder           NullableUint32   `tcpi:"name=rcv_ooopack,prom_type=counter,prom_help='Out-of-order packets received.'" json:"rxOutOfOrder,omitempty"`
+	TxWindow               NullableUint32   `tcpi:"name=snd_wnd,prom_type=gauge,prom_help='Peers advertised receive window after scaling (bytes).'" json:"txWindow,omitempty"`
+	RxWindow               NullableUint32   `tcpi:"name=rcv_wnd,prom_type=gauge,prom_help='local advertised receive window after scaling (bytes).'" json:"rxWindow,omitempty"`
 	Rehash                 NullableUint32   `tcpi:"name=rehash,prom_type=gauge,prom_help='PLB or timeout triggered rehash attempts.'" json:"rehash,omitempty"`
 	TotalRTO               NullableUint16   `tcpi:"name=total_rto,prom_type=counter,prom_help='Total number of RTO timeouts, including SYN/SYN-ACK and recurring timeouts.'" json:"totalRTO,omitempty"`
 	TotalRTORecoveries     NullableUint16   `tcpi:"name=total_rto_recoveries,prom_type=counter,prom_help='Total number of RTO recoveries, including any unfinished recovery.'" json:"totalRTORecoveries,omitempty"`
@@ -189,8 +189,8 @@ func (packed *RawInfo) Unpack() *SysInfo {
 	unpacked.Retransmits = packed.retransmits
 	unpacked.Probes = packed.probes
 	unpacked.Backoff = packed.backoff
-	unpacked.SndWScale = packed.bitfield0 & 0x0f
-	unpacked.RcvWScale = packed.bitfield0 >> 4
+	unpacked.TxWindowScale = packed.bitfield0 & 0x0f
+	unpacked.RxWindowScale = packed.bitfield0 >> 4
 
 	unpacked.DeliveryRateAppLimited = NullableBool{Valid: false}
 	if kernelVersionIsAtLeast_4_9 {
@@ -206,27 +206,27 @@ func (packed *RawInfo) Unpack() *SysInfo {
 
 	unpacked.RTO = time.Duration(packed.rto) * time.Millisecond
 	unpacked.ATO = time.Duration(packed.ato) * time.Millisecond
-	unpacked.SndMSS = packed.snd_mss
-	unpacked.RcvMSS = packed.rcv_mss
+	unpacked.TxMSS = packed.snd_mss
+	unpacked.RxMSS = packed.rcv_mss
 	unpacked.UnAcked = packed.unacked
 	unpacked.Sacked = packed.sacked
 	unpacked.Lost = packed.lost
 	unpacked.Retrans = packed.retrans
 	unpacked.Fackets = packed.fackets
-	unpacked.LastDataSent = time.Duration(packed.last_data_sent) * time.Millisecond
-	unpacked.LastAckSent = time.Duration(packed.last_ack_sent) * time.Millisecond
-	unpacked.LastDataRecv = time.Duration(packed.last_data_recv) * time.Millisecond
-	unpacked.LastAckRecv = time.Duration(packed.last_ack_recv) * time.Millisecond
+	unpacked.LastTxAt = time.Duration(packed.last_data_sent) * time.Millisecond
+	unpacked.LastTxAckAt = time.Duration(packed.last_ack_sent) * time.Millisecond
+	unpacked.LastRxAt = time.Duration(packed.last_data_recv) * time.Millisecond
+	unpacked.LastRxAckAt = time.Duration(packed.last_ack_recv) * time.Millisecond
 	unpacked.PMTU = packed.pmtu
-	unpacked.RcvSSThresh = packed.rcv_ssthresh
+	unpacked.RxSSThreshold = packed.rcv_ssthresh
 	unpacked.RTT = time.Duration(packed.rtt) * time.Millisecond
 	unpacked.RTTVar = time.Duration(packed.rttvar) * time.Millisecond
-	unpacked.SndSSThresh = packed.snd_ssthresh
-	unpacked.SndCWnd = packed.snd_cwnd
+	unpacked.TxSSThreshold = packed.snd_ssthresh
+	unpacked.TxCongestionWindow = packed.snd_cwnd
 	unpacked.AdvMSS = packed.advmss
 	unpacked.Reordering = packed.reordering
-	unpacked.RcvRTT = time.Duration(packed.rcv_rtt) * time.Millisecond
-	unpacked.RcvSpace = packed.rcv_space
+	unpacked.RxRTT = time.Duration(packed.rcv_rtt) * time.Millisecond
+	unpacked.RxSpace = packed.rcv_space
 	unpacked.TotalRetrans = packed.total_retrans
 	unpacked.PacingRate = NullableUint64{Valid: false}
 	unpacked.MaxPacingRate = NullableUint64{Valid: false}
@@ -277,15 +277,15 @@ func (packed *RawInfo) Unpack() *SysInfo {
 	}
 
 	unpacked.BusyTime = NullableUint64{Valid: false}
-	unpacked.RwndLimited = NullableUint64{Valid: false}
-	unpacked.SndbufLimited = NullableUint64{Valid: false}
+	unpacked.RxWindowLimited = NullableUint64{Valid: false}
+	unpacked.TxBufferLimited = NullableUint64{Valid: false}
 	if kernelVersionIsAtLeast_4_10 {
 		unpacked.BusyTime.Valid = true
 		unpacked.BusyTime.Value = packed.busy_time
-		unpacked.RwndLimited.Valid = true
-		unpacked.RwndLimited.Value = packed.rwnd_limited
-		unpacked.SndbufLimited.Valid = true
-		unpacked.SndbufLimited.Value = packed.sndbuf_limited
+		unpacked.RxWindowLimited.Valid = true
+		unpacked.RxWindowLimited.Value = packed.rwnd_limited
+		unpacked.TxBufferLimited.Valid = true
+		unpacked.TxBufferLimited.Value = packed.sndbuf_limited
 	}
 
 	unpacked.Delivered = NullableUint32{Valid: false}
@@ -312,23 +312,23 @@ func (packed *RawInfo) Unpack() *SysInfo {
 		unpacked.ReordSeen.Value = packed.reord_seen
 	}
 
-	unpacked.RcvOOOPacket = NullableUint32{Valid: false}
-	unpacked.SendWindow = NullableUint32{Valid: false}
+	unpacked.RxOutOfOrder = NullableUint32{Valid: false}
+	unpacked.TxWindow = NullableUint32{Valid: false}
 	if kernelVersionIsAtLeast_5_4 {
-		unpacked.RcvOOOPacket.Valid = true
-		unpacked.RcvOOOPacket.Value = packed.rcv_ooopack
-		unpacked.SendWindow.Valid = true
-		unpacked.SendWindow.Value = packed.snd_wnd
+		unpacked.RxOutOfOrder.Valid = true
+		unpacked.RxOutOfOrder.Value = packed.rcv_ooopack
+		unpacked.TxWindow.Valid = true
+		unpacked.TxWindow.Value = packed.snd_wnd
 	}
 
-	unpacked.RecvWindow = NullableUint32{Valid: false}
+	unpacked.RxWindow = NullableUint32{Valid: false}
 	unpacked.Rehash = NullableUint32{Valid: false}
 	unpacked.TotalRTO = NullableUint16{Valid: false}
 	unpacked.TotalRTORecoveries = NullableUint16{Valid: false}
 	unpacked.TotalRTOTime = NullableUint32{Valid: false}
 	if kernelVersionIsAtLeast_6_2 {
-		unpacked.RecvWindow.Valid = true
-		unpacked.RecvWindow.Value = packed.rcv_wnd
+		unpacked.RxWindow.Valid = true
+		unpacked.RxWindow.Value = packed.rcv_wnd
 		unpacked.Rehash.Valid = true
 		unpacked.Rehash.Value = packed.rehash
 		unpacked.TotalRTO.Valid = true
@@ -339,18 +339,18 @@ func (packed *RawInfo) Unpack() *SysInfo {
 		unpacked.TotalRTOTime.Value = packed.total_rto_time
 	}
 
-	unpacked.Options = []Option{}
+	unpacked.TxOptions = []Option{}
 	for _, flag := range tcpOptions {
 		if packed.options&flag == 0 {
 			continue
 		}
 		switch flag {
 		case TCPI_OPT_TIMESTAMPS, TCPI_OPT_SACK, TCPI_OPT_ECN, TCPI_OPT_ECN_SEEN, TCPI_OPT_SYN_DATA, TCPI_OPT_USEC_TS, TCPI_OPT_TFO_CHILD:
-			unpacked.Options = append(unpacked.Options, Option{Kind: tcpOptionsMap[flag], Value: 0})
-			unpacked.PeerOptions = append(unpacked.PeerOptions, Option{Kind: tcpOptionsMap[flag], Value: 0})
+			unpacked.TxOptions = append(unpacked.TxOptions, Option{Kind: tcpOptionsMap[flag], Value: 0})
+			unpacked.RxOptions = append(unpacked.RxOptions, Option{Kind: tcpOptionsMap[flag], Value: 0})
 		case TCPI_OPT_WSCALE:
-			unpacked.Options = append(unpacked.Options, Option{Kind: tcpOptionsMap[flag], Value: uint64(packed.snd_wnd)})
-			unpacked.PeerOptions = append(unpacked.PeerOptions, Option{Kind: tcpOptionsMap[flag], Value: uint64(packed.rcv_wnd)})
+			unpacked.TxOptions = append(unpacked.TxOptions, Option{Kind: tcpOptionsMap[flag], Value: uint64(packed.snd_wnd)})
+			unpacked.RxOptions = append(unpacked.RxOptions, Option{Kind: tcpOptionsMap[flag], Value: uint64(packed.rcv_wnd)})
 		}
 	}
 
@@ -359,27 +359,28 @@ func (packed *RawInfo) Unpack() *SysInfo {
 
 func (s *SysInfo) ToInfo() *Info {
 	info := &Info{
-		State:               s.StateName,
-		Options:             s.Options,
-		PeerOptions:         s.PeerOptions,
-		SenderMSS:           uint64(s.SndMSS),
-		ReceiverMSS:         uint64(s.RcvMSS),
-		RTT:                 s.RTT,
-		RTTVar:              s.RTTVar,
-		RTO:                 s.RTO,
-		ATO:                 s.ATO,
-		LastDataSent:        s.LastDataSent,
-		LastDataReceived:    s.LastAckRecv,
-		LastAckReceived:     s.LastAckRecv,
-		ReceiverWindow:      uint64(s.RcvSpace),
-		SenderSSThreshold:   uint64(s.SndSSThresh),
-		ReceiverSSThreshold: uint64(s.RcvSSThresh),
-		SenderWindowSegs:    uint64(s.SndCWnd),
-		Sys:                 s,
+		State:         s.StateName,
+		TxOptions:     s.TxOptions,
+		RxOptions:     s.RxOptions,
+		TxMSS:         uint64(s.TxMSS),
+		RxMSS:         uint64(s.RxMSS),
+		RTT:           s.RTT,
+		RTTVar:        s.RTTVar,
+		RTO:           s.RTO,
+		ATO:           s.ATO,
+		LastTxAt:      s.LastTxAt,
+		LastRxAt:      s.LastRxAt,
+		LastTxAckAt:   s.LastTxAckAt,
+		LastRxAckAt:   s.LastRxAckAt,
+		RxWindow:      uint64(s.RxSpace),
+		TxSSThreshold: uint64(s.TxSSThreshold),
+		RxSSThreshold: uint64(s.RxSSThreshold),
+		TxWindowSegs:  uint64(s.TxCongestionWindow),
+		Sys:           s,
 	}
 
-	info.Options = s.Options
-	info.PeerOptions = s.PeerOptions
+	info.TxOptions = s.TxOptions
+	info.RxOptions = s.RxOptions
 
 	return info
 }
