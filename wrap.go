@@ -36,7 +36,7 @@ type Conn struct {
 	RxErr           error            `json:"rxErr,omitempty"`
 	TxErr           error            `json:"txErr,omitempty"`
 	InfoErr         error            `json:"infoErr,omitempty"`
-	Attempts        int              `json:"attempts,omitempty"`
+	Reconnects      int              `json:"reconnects,omitempty"`
 	OpenedInfo      *tcpinfo.Info    `json:"openedInfo,omitempty"`
 	ClosedInfo      *tcpinfo.Info    `json:"closedInfo,omitempty"`
 	supportsTCPInfo bool
@@ -116,10 +116,10 @@ func (w *Conn) gatherAndReport(state int) {
 	w.ClosedInfo = sysInfo.ToInfo()
 }
 
-// SetConnectionAttempts stores the number of attempts that were needed to open this connection.
+// SetReconnects stores the number of additional connection attempts that were needed to open this connection.
 // This is managed externally by the caller, but reported in the final stats.
-func (w *Conn) SetConnectionAttempts(attempts int) {
-	w.Attempts = attempts
+func (w *Conn) SetReconnects(reconnects int) {
+	w.Reconnects = reconnects
 }
 
 // Close invokes the reportWrapper with a close event before closing the connection.
