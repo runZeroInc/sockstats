@@ -122,6 +122,35 @@ type SysInfo struct {
 	TxRetransmitPackets uint64        `tcpi:"name=tx_retransmit_packets,prom_type=gauge,prom_help='Number of retransmitted packets.'" json:"txRetransmitPackets,omitempty"`
 }
 
+func (s *SysInfo) ToMap() map[string]any {
+	return map[string]any{
+		"state":               s.StateName,
+		"txWindowScale":       s.TxWindowScale,
+		"rxWindowScale":       s.RxWindowScale,
+		"txOptions":           s.TxOptions,
+		"rxOptions":           s.RxOptions,
+		"flags":               s.Flags,
+		"rto":                 s.RTO,
+		"mss":                 s.MaxSeg,
+		"txSSThreshold":       s.TxSSThreshold,
+		"txCWindowBytes":      s.TxCWindow,
+		"txWindow":            s.TxWindow,
+		"txSendBufferBytes":   s.TxSendBufferBytes,
+		"rxWindow":            s.RxWindow,
+		"rttCur":              s.RTTCur,
+		"rttSmoothed":         s.SRTT,
+		"rttVar":              s.RTTVar,
+		"tfoFlags":            s.TFOFlags,
+		"txPackets":           s.TxPackets,
+		"txBytes":             s.TxBytes,
+		"txRetransmitBytes":   s.TxRetransmitBytes,
+		"rxPackets":           s.RxPackets,
+		"rxBytes":             s.RxBytes,
+		"rxOutOfOrderBytes":   s.RxOutOfOrderBytes,
+		"txRetransmitPackets": s.TxRetransmitPackets,
+	}
+}
+
 // timeFieldMultiplier is used to convert fields representing time in milliseconds to time.Duration (nanoseconds).
 var timeFieldMultiplier = time.Millisecond
 

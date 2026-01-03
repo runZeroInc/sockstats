@@ -185,3 +185,56 @@ func (w *Conn) Warnings() []string {
 	}
 	return warns
 }
+
+func (w *Conn) ToMap() map[string]any {
+	fset := map[string]any{
+		"openedAt":   w.OpenedAt,
+		"closedAt":   w.ClosedAt,
+		"firstRxAt":  w.FirstRxAt,
+		"firstTxAt":  w.FirstTxAt,
+		"lastRxAt":   w.LastRxAt,
+		"lastTxAt":   w.LastTxAt,
+		"txBytes":    w.TxBytes,
+		"rxBytes":    w.RxBytes,
+		"reconnects": w.Reconnects,
+		"localAddr":  w.LocalAddr().String(),
+		"remoteAddr": w.RemoteAddr().String(),
+		"warnings":   w.GetWarnings(),
+	}
+	if w.RxErr != nil {
+		fset["rxErr"] = w.RxErr.Error()
+	}
+	if w.RxErr != nil {
+		fset["rxErr"] = w.RxErr.Error()
+	}
+	if w.TxErr != nil {
+		fset["txErr"] = w.TxErr.Error()
+	}
+	if w.InfoErr != nil {
+		fset["infoErr"] = w.InfoErr.Error()
+	}
+	if w.OpenedInfo != nil {
+		fset["openedInfo"] = w.OpenedInfo.ToMap()
+	}
+	if w.ClosedInfo != nil {
+		fset["closedInfo"] = w.ClosedInfo.ToMap()
+	}
+	return fset
+}
+
+func (w *Conn) GetWarnings() []string {
+	var warns []string
+	if w.Reconnects > 0 {
+		warns = append(warns, "reconnects="+strconv.FormatInt(int64(w.Reconnects), 10))
+	}
+	for _, info := range []*tcpinfo.Info{w.OpenedInfo, w.ClosedInfo} {
+		if info == nil {
+			continue
+		}
+		if info.Retransmits > 0 {
+			warns = append(warns, "retransmits="+strconv.FormatInt(int64(info.Retransmits), 10))
+		}
+		warns = append(warns, info.Sys.Warnings()...)
+	}
+	return warns
+}

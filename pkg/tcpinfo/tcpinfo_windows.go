@@ -107,6 +107,38 @@ type SysInfo struct {
 	SndLimBytesSnd      uint64        `tcpi:"name=snd_lim_bytes_snd,prom_type=gauge,prom_help='Number of bytes limited by congestion window.'" json:"sndLimBytesSnd,omitempty"`
 }
 
+func (s *SysInfo) ToMap() map[string]any {
+	return map[string]any{
+		"state":               s.StateName,
+		"mss":                 s.MSS,
+		"connectedTimeNS":     s.ConnectedTimeNS,
+		"rtt":                 s.RTT,
+		"rttMin":              s.RTTMin,
+		"bytesInFlight":       s.BytesInFlight,
+		"congestionWindow":    s.CongestionWindow,
+		"txWindow":            s.TxWindow,
+		"rxWindow":            s.RxWindow,
+		"rxBuffer":            s.RxBuffer,
+		"txBytes":             s.TxBytes,
+		"rxBytes":             s.RxBytes,
+		"rxOutOfOrderBytes":   s.RxOutOfOrderBytes,
+		"txRetransmitBytes":   s.TxRetransmitBytes,
+		"fastRetransmissions": s.FastRetrans,
+		"duplicateAcksIn":     s.DupAcksIn,
+		"timeoutEpisodes":     s.TimeoutEpisodes,
+		"synRetransmissions":  s.SynRetrans,
+		"sndLimTransRwin":     s.SndLimTransRwin,
+		"sndLimTimeRwin":      s.SndLimTransTimeRwin,
+		"sndLimBytesRwin":     s.SndLimBytesRwin,
+		"sndLimTransCwnd":     s.SndLimTransCwnd,
+		"sndLimTimeCwnd":      s.SndLimTimeCwnd,
+		"sndLimBytesCwnd":     s.SndLimBytesCwnd,
+		"sndLimTransSnd":      s.SndLimTransSnd,
+		"sndLimTimeSnd":       s.SndLimTimeSnd,
+		"sndLimBytesSnd":      s.SndLimBytesSnd,
+	}
+}
+
 // timeFieldMultiplier is used to convert fields representing time in milliseconds to time.Duration (nanoseconds).
 var timeFieldMultiplier = time.Microsecond
 

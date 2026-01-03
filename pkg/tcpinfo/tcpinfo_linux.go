@@ -177,6 +177,132 @@ type SysInfo struct {
 	TotalRTOTime           NullableUint32   `tcpi:"name=total_rto_time,prom_type=counter,prom_help='Total time spent in RTO recoveries in nanoseconds, including any unfinished recovery.'" json:"totalRTOTime,omitempty"`
 }
 
+func (s *SysInfo) ToMap() map[string]any {
+	r := map[string]any{
+		"state":         s.StateName,
+		"caState":       s.CAState,
+		"retransmits":   s.Retransmits,
+		"probes":        s.Probes,
+		"backoff":       s.Backoff,
+		"txOptions":     s.TxOptions,
+		"rxOptions":     s.RxOptions,
+		"txWindowScale": s.TxWindowScale,
+		"rxWindowScale": s.RxWindowScale,
+		"rto":           s.RTO,
+		"ato":           s.ATO,
+		"txMSS":         s.TxMSS,
+		"rxMSS":         s.RxMSS,
+		"unAcked":       s.UnAcked,
+		"sacked":        s.Sacked,
+		"lost":          s.Lost,
+		"retrans":       s.Retrans,
+		"fackets":       s.Fackets,
+		"lastTxAt":      s.LastTxAt,
+		"lastTxAckAt":   s.LastTxAckAt,
+		"lastRxAt":      s.LastRxAt,
+		"lastRxAckAt":   s.LastRxAckAt,
+		"pmtu":          s.PMTU,
+		"rxSSThreshold": s.RxSSThreshold,
+		"rtt":           s.RTT,
+		"rttVar":        s.RTTVar,
+		"txSSThreshold": s.TxSSThreshold,
+		"txCWindow":     s.TxCWindow,
+		"advMSS":        s.AdvMSS,
+		"reordering":    s.Reordering,
+		"rxRTT":         s.RxRTT,
+		"rxSpace":       s.RxSpace,
+		"totalRetrans":  s.TotalRetrans,
+	}
+	if s.DeliveryRateAppLimited.Valid {
+		r["deliveryRateAppLimited"] = s.DeliveryRateAppLimited.Value
+	}
+	if s.FastOpenClientFail.Valid {
+		r["fastOpenClientFail"] = s.FastOpenClientFail.Value
+	}
+	if s.PacingRate.Valid {
+		r["pacingRate"] = s.PacingRate.Value
+	}
+	if s.MaxPacingRate.Valid {
+		r["maxPacingRate"] = s.MaxPacingRate.Value
+	}
+	if s.BytesAcked.Valid {
+		r["bytesAcked"] = s.BytesAcked.Value
+	}
+	if s.BytesReceived.Valid {
+		r["bytesReceived"] = s.BytesReceived.Value
+	}
+	if s.SegsOut.Valid {
+		r["segsOut"] = s.SegsOut.Value
+	}
+	if s.SegsIn.Valid {
+		r["segsIn"] = s.SegsIn.Value
+	}
+	if s.NotSentBytes.Valid {
+		r["notSentBytes"] = s.NotSentBytes.Value
+	}
+	if s.MinRTT.Valid {
+		r["minRTT"] = s.MinRTT.Value
+	}
+	if s.DataSegsIn.Valid {
+		r["dataSegsIn"] = s.DataSegsIn.Value
+	}
+	if s.DataSegsOut.Valid {
+		r["dataSegsOut"] = s.DataSegsOut.Value
+	}
+	if s.DeliveryRate.Valid {
+		r["deliveryRate"] = s.DeliveryRate.Value
+	}
+	if s.BusyTime.Valid {
+		r["busyTime"] = s.BusyTime.Value
+	}
+	if s.RxWindowLimited.Valid {
+		r["rxWindowLimited"] = s.RxWindowLimited.Value
+	}
+	if s.TxBufferLimited.Valid {
+		r["txBufferLimited"] = s.TxBufferLimited.Value
+	}
+	if s.Delivered.Valid {
+		r["delivered"] = s.Delivered.Value
+	}
+	if s.DeliveredCE.Valid {
+		r["deliveredCE"] = s.DeliveredCE.Value
+	}
+	if s.BytesSent.Valid {
+		r["bytesSent"] = s.BytesSent.Value
+	}
+	if s.BytesRetrans.Valid {
+		r["bytesRetrans"] = s.BytesRetrans.Value
+	}
+	if s.DSACKDups.Valid {
+		r["dsackDups"] = s.DSACKDups.Value
+	}
+	if s.ReordSeen.Valid {
+		r["reordSeen"] = s.ReordSeen.Value
+	}
+	if s.RxOutOfOrder.Valid {
+		r["rxOutOfOrder"] = s.RxOutOfOrder.Value
+	}
+	if s.TxWindow.Valid {
+		r["txWindow"] = s.TxWindow.Value
+	}
+	if s.RxWindow.Valid {
+		r["rxWindow"] = s.RxWindow.Value
+	}
+	if s.Rehash.Valid {
+		r["rehash"] = s.Rehash.Value
+	}
+	if s.TotalRTO.Valid {
+		r["totalRTO"] = s.TotalRTO.Value
+	}
+	if s.TotalRTORecoveries.Valid {
+		r["totalRTORecoveries"] = s.TotalRTORecoveries.Value
+	}
+	if s.TotalRTOTime.Valid {
+		r["totalRTOTime"] = s.TotalRTOTime.Value
+	}
+	return r
+}
+
 // timeFieldMultiplier is used to convert fields representing time in microseconds to time.Duration (nanoseconds).
 var timeFieldMultiplier = time.Microsecond
 

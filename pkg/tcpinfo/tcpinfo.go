@@ -29,6 +29,35 @@ type Info struct {
 	Sys           *SysInfo      `json:"sysInfo,omitempty"`        // Platform-specific information
 }
 
+// ToMap converts the Info struct to a map[string]any for easier serialization
+func (i *Info) ToMap() map[string]any {
+	m := map[string]any{
+		"state":          i.State,
+		"txOptions":      i.TxOptions,
+		"rxOptions":      i.RxOptions,
+		"txMSS":          i.TxMSS,
+		"rxMSS":          i.RxMSS,
+		"rtt":            i.RTT,
+		"rttVar":         i.RTTVar,
+		"rto":            i.RTO,
+		"ato":            i.ATO,
+		"lastTxAt":       i.LastTxAt,
+		"lastRxAt":       i.LastRxAt,
+		"lastTxAckAt":    i.LastTxAckAt,
+		"lastRxAckAt":    i.LastRxAckAt,
+		"rxWindow":       i.RxWindow,
+		"txSSThreshold":  i.TxSSThreshold,
+		"rxSSThreshold":  i.RxSSThreshold,
+		"txCWindowBytes": i.TxWindowBytes,
+		"txCWindowSegs":  i.TxWindowSegs,
+		"retransmits":    i.Retransmits,
+	}
+	if i.Sys != nil {
+		m["sysInfo"] = i.Sys.ToMap()
+	}
+	return m
+}
+
 type Option struct {
 	Kind  string `json:"kind"`
 	Value uint64 `json:"value"`
