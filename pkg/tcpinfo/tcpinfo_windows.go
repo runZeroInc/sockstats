@@ -11,6 +11,9 @@ import (
 	"unsafe"
 )
 
+// SIO_TCP_INFO is available to non-admins, as opposed to GetPerTcpConnectionEStats:
+// - https://learn.microsoft.com/en-us/windows/win32/api/iphlpapi/nf-iphlpapi-getpertcpconnectionestats
+
 const SIO_TCP_INFO = syscall.IOC_INOUT | syscall.IOC_VENDOR | 39
 
 // RawInfoV0 mirrors the _TCP_INFO_v0 structure from the Windows SDK

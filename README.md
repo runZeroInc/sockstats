@@ -55,7 +55,7 @@ func main() {
 
 # Operating Systems
 
-The current code supports detailed TCPINFO collection for Linux and macOS. 
+The current code supports detailed TCPINFO collection for Linux, macOS, and Windows.
 
 # Examples
 
