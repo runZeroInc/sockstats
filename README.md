@@ -6,7 +6,12 @@ statistics for the connection, including round-trip-time, max segment size, and 
 
 # Overview
 
-Conniver is best used by specifying a DialContext with a TCP or HTTP client:
+Conniver is best used by specifying a DialContext with a TCP or HTTP.
+
+The following code demonstrates using conniver to collect connection data
+from the `net/http.Client`. The wrapped `net.Conn` should work with most Go
+packages that allow custom dialers or provide some way to provide a
+proxy `net.Conn`.
 
 ```go
 import (
@@ -57,6 +62,8 @@ func main() {
 
 The current code supports detailed TCPINFO collection for Linux, macOS, and Windows.
 
+Support for FreeBSD is planned.
+
 # Examples
 
 The `conniver.Conn` struct includes basic socket details in addition to TCPInfo fields. 
@@ -102,7 +109,9 @@ type Info struct {
 }
 ```
 
-The `*SysInfo` fields vary dramatically by operating system and require OS build tags to use correctly.
+The `*SysInfo` fields vary dramatically by operating system and require OS build tags to use directly.
+The `conniver.Conn`, `tcpinfoInfo`, and `SysInfo` structs all support a `ToMap()` function, which
+returns a `map[string]any` that can be used to access OS-specific fields dynamically.
 
 The function passed to `conniver.WrapConn` is called for both the `opened` and `closed` states.
 The `opened` callback fires right *after* the connection is established.
@@ -118,12 +127,13 @@ func(c *conniver.Conn, state int) {
         return
     }
     raw, _ := json.Marshal(c)
-	fmt.Printf("Connection %s -> %s took %s, sent:%d/recv:%d bytes, starting RTT %s(%s) and ending RTT %s(%s)\n%s\n\n",
+	fmt.Printf("Connection %s -> %s took %s, sent:%d/recv:%d bytes, starting RTT %s(%s) and ending RTT %s(%s)\nWarnings:%s\n%s\n\n",
         c.LocalAddr().String(), c.RemoteAddr().String(),
         time.Duration(c.ClosedAt-c.OpenedAt),
         c.SentBytes, c.RecvBytes,
         c.OpenedInfo.RTT, c.OpenedInfo.RTTVar,
         c.ClosedInfo.RTT, c.ClosedInfo.RTTVar,
+		strings.Join(c.Warnings(), ","),
         string(raw),
     )
 })
@@ -145,9 +155,8 @@ Connection 192.168.10.23:60031 -> 142.251.116.141:443 took 329.892ms, sent:1707/
 
 # History
 
-This package was bootstrapped from the following sources:
-
+The `tcpinfo` package was bootstrapped from the following sources:
 - https://github.com/simeonmiteff/go-tcpinfo/ (Mozilla Public License)
 - https://github.com/mikioh/tcpinfo/ (BSD 2-Clause)
-- https://github.com/mikioh/tcpopt/ (BSD 2-Clause)
-- https://github.com/mikioh/tcp/ (BSD 2-Clause)
+
+The `httpstat` command was derived from [httpstat](https://github.com/davecheney/httpstat) (MIT License).
