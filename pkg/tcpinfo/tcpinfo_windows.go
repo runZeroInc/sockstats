@@ -286,28 +286,27 @@ func GetTCPInfo(fds uintptr) (*SysInfo, error) {
 		&cbbr,
 		&ov,
 		0,
-	); err != nil {
-		// Fallback to using _TCP_INFO_v0
-		var inbufv0 uint32 = 1
-		var outbufv0 RawInfoV0
-
-		if err = syscall.WSAIoctl(
-			fd,
-			SIO_TCP_INFO,
-			(*byte)(unsafe.Pointer(&inbufv0)),
-			uint32(unsafe.Sizeof(inbufv0)),
-			(*byte)(unsafe.Pointer(&outbufv0)),
-			uint32(unsafe.Sizeof(outbufv0)),
-			&cbbr,
-			&ov,
-			0,
-		); err != nil {
-			return nil, fmt.Errorf("could not perform the WSAIoctl: %v", err)
-		}
-		return outbufv0.Unpack(), nil
+	); err == nil {
+		return outbufv1.Unpack(), nil
 	}
 
-	return outbufv1.Unpack(), nil
+	// Fallback to using _TCP_INFO_v0
+	var inbufv0 uint32 = 0
+	var outbufv0 RawInfoV0
+	if err := syscall.WSAIoctl(
+		fd,
+		SIO_TCP_INFO,
+		(*byte)(unsafe.Pointer(&inbufv0)),
+		uint32(unsafe.Sizeof(inbufv0)),
+		(*byte)(unsafe.Pointer(&outbufv0)),
+		uint32(unsafe.Sizeof(outbufv0)),
+		&cbbr,
+		&ov,
+		0,
+	); err != nil {
+		return nil, fmt.Errorf("could not perform the WSAIoctl: %v", err)
+	}
+	return outbufv0.Unpack(), nil
 }
 
 func Supported() bool {
