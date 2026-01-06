@@ -1,4 +1,4 @@
-//go:build linux && !(linux && 386)
+//go:build linux
 
 /**
  * Copyright (c) 2022, Xerra Earth Observation Institute.

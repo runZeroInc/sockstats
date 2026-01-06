@@ -1,23 +1,22 @@
-//go:build linux && !(linux && 386)
+//go:build linux
 
 package tcpinfo
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
-	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
-// RawInfo has identical memory layout to Linux kernel tcp_info struct (current as of kernel 5.17.0).
+// RawTCPInfo has identical memory layout to Linux kernel tcp_info struct (current as of kernel 5.17.0).
 // bitfield0 and bitfield1 have been added to capture the 4 packed fields. Note that bitfield1 would still
 // have had the same location before tcpi_delivery_rate_app_limited and tcpi_fastopen_client_fail were added
 // (in v4.9.0 and v5.5.0 respectively) because of alignment rules, so they didn't increase the length or
 // shift the offsets of subsequent variables.
-type RawInfo struct { // struct tcp_info {          																	                                             // unless noted below, struct fields have been around since at least (1da177e4c3f41524e886b7f1b8a0c1fc7321cac2) v2.6.12-rc2^0
+type RawTCPInfo struct { // struct tcp_info {          																	                                             // unless noted below, struct fields have been around since at least (1da177e4c3f41524e886b7f1b8a0c1fc7321cac2) v2.6.12-rc2^0
 	state                uint8  // 1   __U8	tcpi_state;
 	ca_state             uint8  // 2   __u8	tcpi_ca_state;
 	retransmits          uint8  // 3   __u8	tcpi_retransmits;
@@ -174,6 +173,24 @@ type SysInfo struct {
 	TotalRTO               NullableUint16   `tcpi:"name=total_rto,prom_type=counter,prom_help='Total number of RTO timeouts, including SYN/SYN-ACK and recurring timeouts.'" json:"totalRTO,omitempty"`
 	TotalRTORecoveries     NullableUint16   `tcpi:"name=total_rto_recoveries,prom_type=counter,prom_help='Total number of RTO recoveries, including any unfinished recovery.'" json:"totalRTORecoveries,omitempty"`
 	TotalRTOTime           NullableUint32   `tcpi:"name=total_rto_time,prom_type=counter,prom_help='Total time spent in RTO recoveries in nanoseconds, including any unfinished recovery.'" json:"totalRTOTime,omitempty"`
+	CCAlgorithm            string           `tcpi:"name=cc_algorithm,prom_type=gauge,prom_help='Congestion control algorithm in use for this connection.'" json:"ccAlgorithm,omitempty"`
+	// Vegas
+	CCVegasEnabled NullableUint32   `tcpi:"name=cc_vegas_enabled,prom_type=gauge,prom_help='Whether TCP Vegas is enabled system-wide (true/false).'" json:"ccVegasEnabled,omitempty"`
+	CCVegasRTTCnt  NullableUint32   `tcpi:"name=cc_vegas_rtt_cnt,prom_type=gauge,prom_help='Number of RTT samples for TCP Vegas.'" json:"ccVegasRTTCnt,omitempty"`
+	CCVegasRTT     NullableDuration `tcpi:"name=cc_vegas_rtt,prom_type=gauge,prom_help='Average RTT sample for TCP Vegas.'" json:"ccVegasRTT,omitempty"`
+	CCVegasRTTMin  NullableDuration `tcpi:"name=cc_vegas_rtt_min,prom_type=gauge,prom_help='Minimum RTT sample for TCP Vegas.'" json:"ccVegasRTTMin,omitempty"`
+	// BBR
+	CCBBRBwLo        NullableUint32   `tcpi:"name=cc_bbr_bw_lo,prom_type=gauge,prom_help='BBR estimated bandwidth lower bound in Kbps.'" json:"ccBBRBwLo,omitempty"`
+	CCBBRBwHi        NullableUint32   `tcpi:"name=cc_bbr_bw_hi,prom_type=gauge,prom_help='BBR estimated bandwidth upper bound in Kbps.'" json:"ccBBRBwHi,omitempty"`
+	CCBBRMinRTT      NullableDuration `tcpi:"name=cc_bbr_min_rtt,prom_type=gauge,prom_help='BBR minimum RTT estimate.'" json:"ccBBRMinRTT,omitempty"`
+	CCBBRPacingGain  NullableUint32   `tcpi:"name=cc_bbr_pacing_gain,prom_type=gauge,prom_help='BBR pacing gain).'" json:"ccBBRPacingGain,omitempty"`
+	CCBBRCWindowGain NullableUint32   `tcpi:"name=cc_bbr_cwindow_gain,prom_type=gauge,prom_help='BBR congestion window gain.'" json:"ccBBRCWindowGain,omitempty"`
+	// DCTCP
+	CCDCTCPEnabled NullableBool   `tcpi:"name=cc_dctcp_enabled,prom_type=gauge,prom_help='Whether DCTCP is enabled system-wide (true/false).'" json:"ccDCTCPEnabled,omitempty"`
+	CCDCTCPCEState NullableUint16 `tcpi:"name=cc_dctcp_ce_state,prom_type=gauge,prom_help='DCTCP Congestion Experienced state.'" json:"ccDCTCPCEState,omitempty"`
+	CCDCTCPAlpha   NullableUint32 `tcpi:"name=cc_dctcp_alpha,prom_type=gauge,prom_help='DCTCP alpha parameter.'" json:"ccDCTCPAlpha,omitempty"`
+	CCDCTCPABECN   NullableUint32 `tcpi:"name=cc_dctcp_ab_ecn,prom_type=gauge,prom_help='DCTCP AB ECN count.'" json:"ccDCTCPABECN,omitempty"`
+	CCDCTCPABTOT   NullableUint32 `tcpi:"name=cc_dctcp_ab_tot,prom_type=gauge,prom_help='DCTCP AB total count.'" json:"ccDCTCPABTOT,omitempty"`
 }
 
 func (s *SysInfo) ToMap() map[string]any {
@@ -211,6 +228,7 @@ func (s *SysInfo) ToMap() map[string]any {
 		"rxRTT":         s.RxRTT,
 		"rxSpace":       s.RxSpace,
 		"totalRetrans":  s.TotalRetrans,
+		"ccAlgorithm":   s.CCAlgorithm,
 	}
 	if s.DeliveryRateAppLimited.Valid {
 		r["deliveryRateAppLimited"] = s.DeliveryRateAppLimited.Value
@@ -299,6 +317,48 @@ func (s *SysInfo) ToMap() map[string]any {
 	if s.TotalRTOTime.Valid {
 		r["totalRTOTime"] = s.TotalRTOTime.Value
 	}
+	if s.CCVegasEnabled.Valid {
+		r["ccVegasEnabled"] = s.CCVegasEnabled.Value
+	}
+	if s.CCVegasRTTCnt.Valid {
+		r["ccVegasRTTCnt"] = s.CCVegasRTTCnt.Value
+	}
+	if s.CCVegasRTT.Valid {
+		r["ccVegasRTT"] = s.CCVegasRTT.Value
+	}
+	if s.CCVegasRTTMin.Valid {
+		r["ccVegasRTTMin"] = s.CCVegasRTTMin.Value
+	}
+	if s.CCBBRBwLo.Valid {
+		r["ccBBRBwLo"] = s.CCBBRBwLo.Value
+	}
+	if s.CCBBRBwHi.Valid {
+		r["ccBBRBwHi"] = s.CCBBRBwHi.Value
+	}
+	if s.CCBBRMinRTT.Valid {
+		r["ccBBRMinRTT"] = s.CCBBRMinRTT.Value
+	}
+	if s.CCBBRPacingGain.Valid {
+		r["ccBBRPacingGain"] = s.CCBBRPacingGain.Value
+	}
+	if s.CCBBRCWindowGain.Valid {
+		r["ccBBRCWindowGain"] = s.CCBBRCWindowGain.Value
+	}
+	if s.CCDCTCPEnabled.Valid {
+		r["ccDCTCPEnabled"] = s.CCDCTCPEnabled.Value
+	}
+	if s.CCDCTCPCEState.Valid {
+		r["ccDCTCPCEState"] = s.CCDCTCPCEState.Value
+	}
+	if s.CCDCTCPAlpha.Valid {
+		r["ccDCTCPAlpha"] = s.CCDCTCPAlpha.Value
+	}
+	if s.CCDCTCPABECN.Valid {
+		r["ccDCTCPABECN"] = s.CCDCTCPABECN.Value
+	}
+	if s.CCDCTCPABTOT.Valid {
+		r["ccDCTCPABTOT"] = s.CCDCTCPABTOT.Value
+	}
 	return r
 }
 
@@ -308,7 +368,7 @@ var timeFieldMultiplier = time.Microsecond
 // Unpack copies fields from RawTCPInfo to TCPInfo, taking care of the bitfields and marking fields not provided
 // by older kernel versions as null. In the future it may deal with varying lengths of the struct returned by the
 // system call (i.e., kernels older than 5.4.0).
-func (packed *RawInfo) Unpack() *SysInfo {
+func (packed *RawTCPInfo) Unpack() *SysInfo {
 	var unpacked SysInfo
 
 	unpacked.State = packed.state
@@ -542,13 +602,6 @@ var tcpStateMap = map[uint8]string{
 	TCP_CLOSING:     "CLOSING",
 }
 
-func tcpInfoTCPStateString(state uint8) string {
-	if s, ok := tcpStateMap[state]; ok {
-		return s
-	}
-	return fmt.Sprintf("UNKNOWN(%d)", state)
-}
-
 // TCP option flags from linux uapi/linux/tcp.h
 const (
 	TCPI_OPT_TIMESTAMPS = 1   /* Timestamps enabled */
@@ -583,18 +636,6 @@ var tcpOptions = []uint8{
 	TCPI_OPT_TFO_CHILD,
 }
 
-func tcpInfoTCPOptionsString(options uint8) string {
-	var opts []string
-	for _, flag := range tcpOptions {
-		if options&flag != 0 {
-			opts = append(opts, tcpOptionsMap[flag])
-		}
-	}
-	return strings.Join(opts, ",")
-}
-
-// ================================================================================================================== //
-
 // Errors from syscall package are private, so we define our own to match the errno.
 var (
 	EAGAIN error = syscall.EAGAIN
@@ -604,38 +645,97 @@ var (
 
 var ErrKernelTooOld = errors.New("tcp_info is not available on Linux prior to kernel 2.6.2")
 
-// GetTCPInfo calls getsockopt(2) on Linux to retrieve tcp_info and unpacks that into the golang-friendly TCPInfo.
+// GetTCPCongestionAlgorithm retrieves the TCP congestion control algorithm in use for the given socket.
+// The returned string is one of "vegas", "dctp", "bbr", "cubic", or newer algorithms.
+func GetTCPCongestionAlgorithm(fds uintptr) (string, error) {
+	algo, err := unix.GetsockoptString(int(fds), unix.IPPROTO_TCP, unix.TCP_CONGESTION)
+	if err != nil {
+		return "", err
+	}
+	return algo, nil
+}
+
+type TCPInfoPlusCC struct {
+	TCPInfo *RawTCPInfo
+	CCAlg   string
+	CCVegas *unix.TCPVegasInfo
+	CCBBR   *unix.TCPBBRInfo
+	CCDCTP  *unix.TCPDCTCPInfo
+}
+
+func (t *TCPInfoPlusCC) Unpack() *SysInfo {
+	sysInfo := t.TCPInfo.Unpack()
+	sysInfo.CCAlgorithm = t.CCAlg
+
+	if t.CCAlg == "vegas" && t.CCVegas != nil {
+		sysInfo.CCVegasEnabled = NullableUint32{Valid: true, Value: t.CCVegas.Enabled}
+		sysInfo.CCVegasRTTCnt = NullableUint32{Valid: true, Value: t.CCVegas.Rttcnt}
+		sysInfo.CCVegasRTTMin = NullableDuration{Valid: true, Value: time.Duration(t.CCVegas.Minrtt) * time.Microsecond}
+		sysInfo.CCVegasRTT = NullableDuration{Valid: true, Value: time.Duration(t.CCVegas.Rtt) * time.Microsecond}
+		return sysInfo
+	}
+	if t.CCAlg == "bbr" && t.CCBBR != nil {
+		sysInfo.CCBBRBwHi = NullableUint32{Valid: true, Value: t.CCBBR.Bw_hi}
+		sysInfo.CCBBRBwLo = NullableUint32{Valid: true, Value: t.CCBBR.Bw_lo}
+		sysInfo.CCBBRMinRTT = NullableDuration{Valid: true, Value: time.Duration(t.CCBBR.Min_rtt) * time.Microsecond}
+		sysInfo.CCBBRPacingGain = NullableUint32{Valid: true, Value: t.CCBBR.Pacing_gain}
+		sysInfo.CCBBRCWindowGain = NullableUint32{Valid: true, Value: t.CCBBR.Cwnd_gain}
+		return sysInfo
+	}
+	if t.CCAlg == "dctcp" && t.CCDCTP != nil {
+		sysInfo.CCDCTCPEnabled = NullableBool{Valid: true, Value: t.CCDCTP.Enabled != 0}
+		sysInfo.CCDCTCPCEState = NullableUint16{Valid: true, Value: t.CCDCTP.Ce_state}
+		sysInfo.CCDCTCPAlpha = NullableUint32{Valid: true, Value: t.CCDCTP.Alpha}
+		sysInfo.CCDCTCPABECN = NullableUint32{Valid: true, Value: t.CCDCTP.Ab_ecn}
+		sysInfo.CCDCTCPABTOT = NullableUint32{Valid: true, Value: t.CCDCTP.Ab_tot}
+	}
+	return sysInfo
+}
+
+// GetTCPInfo retrieves the TCP_INFO struct along with the congestion control algorithm and algorithm-specific info.
 func GetTCPInfo(fds uintptr) (*SysInfo, error) {
+	res := &TCPInfoPlusCC{}
+
 	fd := int(fds)
 	if !kernelVersionIsAtLeast_2_6_2 {
 		return nil, ErrKernelTooOld
 	}
 
-	var value RawInfo
-	length := uint32(sizeOfRawTCPInfo)
+	tcpInfo, err := GetRawTCPInfo(fds)
+	if err != nil {
+		return nil, err
+	}
+	res.TCPInfo = tcpInfo
 
-	_, _, errNo := syscall.Syscall6(
-		syscall.SYS_GETSOCKOPT,
-		uintptr(fd),
-		uintptr(syscall.SOL_TCP),
-		uintptr(syscall.TCP_INFO),
-		uintptr(unsafe.Pointer(&value)),
-		uintptr(unsafe.Pointer(&length)),
-		0,
-	)
-	if errNo != 0 {
-		switch errNo {
-		case syscall.EAGAIN:
-			return nil, EAGAIN
-		case syscall.EINVAL:
-			return nil, EINVAL
-		case syscall.ENOENT:
-			return nil, ENOENT
+	// Now resolve the congestion control algorithm data
+	alg, err := GetTCPCongestionAlgorithm(fds)
+	if err != nil {
+		return res.Unpack(), err
+	}
+	res.CCAlg = alg
+
+	switch alg {
+	case "vegas":
+		v, err := unix.GetsockoptTCPCCVegasInfo(fd, unix.IPPROTO_TCP, 0)
+		if err != nil {
+			return res.Unpack(), err
 		}
-		return nil, errNo
+		res.CCVegas = v
+	case "bbr":
+		v, err := unix.GetsockoptTCPCCBBRInfo(fd, unix.IPPROTO_TCP, 0)
+		if err != nil {
+			return res.Unpack(), err
+		}
+		res.CCBBR = v
+	case "dctcp":
+		v, err := unix.GetsockoptTCPCCDCTCPInfo(fd, unix.IPPROTO_TCP, 0)
+		if err != nil {
+			return res.Unpack(), err
+		}
+		res.CCDCTP = v
 	}
 
-	return value.Unpack(), nil
+	return res.Unpack(), nil
 }
 
 func Supported() bool {

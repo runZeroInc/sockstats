@@ -1,4 +1,4 @@
-//go:build linux && !(linux && 386)
+//go:build linux
 
 /**
  * Copyright (c) 2022, Xerra Earth Observation Institute
@@ -192,7 +192,7 @@ func TestRawTCPInfo_Unpack(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var raw RawInfo
+			var raw RawTCPInfo
 			linuxKernelVersion = &tt.fields.kernel
 			adaptToKernelVersion()
 			if got := raw.Unpack(); !reflect.DeepEqual(got, tt.want) {
