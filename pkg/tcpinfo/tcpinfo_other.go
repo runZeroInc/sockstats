@@ -1,5 +1,4 @@
-//go:build !darwin && !linux && !windows
-// +build !darwin,!linux,!windows
+//go:build !((linux && !386) || darwin || windows)
 
 package tcpinfo
 

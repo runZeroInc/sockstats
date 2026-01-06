@@ -10,8 +10,12 @@ This README has been updated to recognize these additions:
  - Support for Apple macOS
  - Support for Microsoft Windows
 
+Unsupported platforms will still build, but return sparse Info structs with empty SysInfo fields.
 
 ## Linux Support
+
+Linux support is available for every architecture except x86 (386), comically this is the only
+supported Go platform without a SYS_GETSOCKOPT definition. 
 
 ### Features
 

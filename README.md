@@ -73,43 +73,48 @@ Support for FreeBSD is planned.
 The `conniver.Conn` struct includes basic socket details in addition to TCPInfo fields. 
 ```go
 type Conn struct {
-	net.Conn                // The wrapped net.Conn
-	OpenedAt        int64   // The opened time in unix nanoseconds
-	ClosedAt        int64   // The closed time in unix nanoseconds
-	FirstReadAt     int64   // The first successful read time in unix nanoseconds
-	FirstWriteAt    int64   // The first successful write time in unix nanoseconds
-	SentBytes       int64   // The number of bytes sent successfully
-	RecvBytes       int64   // The number of bytes read successfully
-	RecvErr         error   // The last receive error, if any 
-	SentErr         error   // The last send error, if any 
-	InfoErr         error   // The last tcpinfo.TCPInfo() error, if any 
-	Attempts        int     // The number of retries to connect (managed by the caller)
-	OpenedInfo      *tcpinfo.Info // An OS-agnostic set of TCP information fields at open time
-	ClosedInfo      *tcpinfo.Info  // An OS-agnostic set of TCP information fields at close time
+	net.Conn                   // The wrapped net.Conn
+	Context    context.Context // The optional context
+	OpenedAt   int64           // The opened time in unix nanoseconds
+	ClosedAt   int64           // The closed time in unix nanoseconds
+	FirstRxAt  int64           // The first successful read time in unix nanoseconds
+	FirstTxAt  int64           // The first successful write time in unix nanoseconds
+	LastRxAt   int64           // The last successful read time in unix nanoseconds
+	LastTxAt   int64           // The last successful write time in unix nanoseconds
+	TxBytes    int64           // The number of bytes sent successfully
+	RxBytes    int64           // The number of bytes read successfully
+	RxErr      error           // The last receive error, if any
+	TxErr      error           // The last send error, if any
+	InfoErr    error           // The last send error, if any
+	Reconnects int             // The number of retries to connect (managed by the caller)
+	OpenedInfo *tcpinfo.Info   // An OS-agnostic set of TCP information fields at open time
+	ClosedInfo *tcpinfo.Info   // An OS-agnostic set of TCP information fields at close timeß
 }
 ```
 
 The `tcpinfo.Info` structure contains OS-normalized fields AND the entire platform-specific TCPINFO structure.
 ```go
 type Info struct {
-	State               string        // Connection state
-	Options             []Option      // Requesting options
-	PeerOptions         []Option      // Options requested from peer
-	SenderMSS           uint64        // Maximum segment size for sender in bytes
-	ReceiverMSS         uint64        // Maximum segment size for receiver in bytes
-	RTT                 time.Duration // Round-trip time in nanoseconds
-	RTTVar              time.Duration // Round-trip time variation in nanoseconds
-	RTO                 time.Duration // Retransmission timeout
-	ATO                 time.Duration // Delayed acknowledgement timeout [Linux only]
-	LastDataSent        time.Duration // Nanoseconds since last data sent [Linux only]
-	LastDataReceived    time.Duration // Nanoseconds since last data received [FreeBSD and Linux]
-	LastAckReceived     time.Duration // Nanoseconds since last ack received [Linux only]
-	ReceiverWindow      uint64        // Advertised receiver window in bytes
-	SenderSSThreshold   uint64        // Slow start threshold for sender in bytes or # of segments
-	ReceiverSSThreshold uint64        // Slow start threshold for receiver in bytes [Linux only]
-	SenderWindowBytes   uint64        // Congestion window for sender in bytes [Darwin and FreeBSD]
-	SenderWindowSegs    uint64        // Congestion window for sender in # of segments [Linux and NetBSD]
-	Sys                 *SysInfo      // Platform-specific information
+	State         string        // Connection state
+	TxOptions     []Option      // Requesting options
+	RxOptions     []Option      // Options requested from peer
+	TxMSS         uint64        // Maximum segment size for sender in bytes
+	RxMSS         uint64        // Maximum segment size for receiver in bytes
+	RTT           time.Duration // Round-trip time in nanoseconds
+	RTTVar        time.Duration // Round-trip time variation in nanoseconds
+	RTO           time.Duration // Retransmission timeout
+	ATO           time.Duration // Delayed acknowledgement timeout [Linux only]
+	LastTxAt      time.Duration // Nanoseconds since last data sent [Linux only]
+	LastRxAt      time.Duration // Nanoseconds since last data received [FreeBSD and Linux]
+	LastTxAckAt   time.Duration // Nanoseconds since last ack sent [Linux only]
+	LastRxAckAt   time.Duration // Nanoseconds since last ack received [Linux only]
+	RxWindow      uint64        // Advertised receiver window in bytes
+	TxSSThreshold uint64        // Slow start threshold for sender in bytes or # of segments
+	RxSSThreshold uint64        // Slow start threshold for receiver in bytes [Linux only]
+	TxWindowBytes uint64        // Congestion window for sender in bytes [Darwin and FreeBSD]
+	TxWindowSegs  uint64        // Congestion window for sender in # of segments [Linux and NetBSD]
+	Retransmits   uint64        // Number of retransmissions (segments or packets)
+	Sys           *SysInfo      // Platform-specific information
 }
 ```
 
