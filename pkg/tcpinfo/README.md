@@ -14,9 +14,6 @@ Unsupported platforms will still build, but return sparse Info structs with empt
 
 ## Linux Support
 
-Linux support is available for every architecture except x86 (386), comically this is the only
-supported Go platform without a SYS_GETSOCKOPT definition. 
-
 ### Features
 
 * **Detailed TCP Information:** Retrieves the `tcp_info` struct from the Linux kernel, providing a wealth of information about TCP connections.
