@@ -5,7 +5,6 @@ package tcpinfo
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
 	"syscall"
@@ -256,13 +255,6 @@ var tcpStateMap = map[uint8]string{
 	TCPS_CLOSING:      "CLOSING",
 }
 
-func tcpInfoTCPStateString(state uint8) string {
-	if s, ok := tcpStateMap[state]; ok {
-		return s
-	}
-	return fmt.Sprintf("UNKNOWN(%d)", state)
-}
-
 const (
 	SysFlagLossRecovery       = 0x1
 	SysFlagReorderingDetected = 0x2
@@ -308,16 +300,6 @@ var tcpOptions = []uint32{
 	TCPCI_OPT_SACK,
 	TCPCI_OPT_WSCALE,
 	TCPCI_OPT_ECN,
-}
-
-func tcpInfoTCPOptionsString(options uint32) string {
-	var opts []string
-	for _, flag := range tcpOptions {
-		if options&flag != 0 {
-			opts = append(opts, tcpOptionsMap[flag])
-		}
-	}
-	return strings.Join(opts, ",")
 }
 
 // ================================================================================================================== //
